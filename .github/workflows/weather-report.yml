@@ -1,0 +1,78 @@
+name: Daily Weather Report
+
+on:
+  schedule:
+    # Sabah 08:00 — Riga/İstanbul (UTC+3, yaz saati) = 05:00 UTC
+    - cron: '0 5 * * *'
+    # Öğlen 12:00 — Riga/İstanbul (UTC+3, yaz saati) = 09:00 UTC
+    - cron: '0 9 * * *'
+
+  # Elle tetikleme — Actions sekmesinden test için
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Rapor modu'
+        required: true
+        default: 'morning'
+        type: choice
+        options:
+          - morning
+          - noon
+      dry_run:
+        description: 'Dry run (mail gönderme, sadece logla)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+
+jobs:
+  send-weather-report:
+    name: Hava Durumu Raporu Gönder
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Repoyu çek
+        uses: actions/checkout@v4
+
+      - name: Python 3.11 kur
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Bağımlılıkları yükle
+        run: pip install -r requirements.txt
+
+      - name: Rapor modunu belirle
+        id: determine-mode
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "mode=${{ github.event.inputs.mode }}" >> "$GITHUB_OUTPUT"
+            echo "dry_run=${{ github.event.inputs.dry_run }}" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event.schedule }}" = "0 5 * * *" ]; then
+            echo "mode=morning" >> "$GITHUB_OUTPUT"
+            echo "dry_run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "mode=noon" >> "$GITHUB_OUTPUT"
+            echo "dry_run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Hava durumu raporu gönder
+        env:
+          RECIPIENTS: ${{ secrets.RECIPIENTS }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: |
+          MODE="${{ steps.determine-mode.outputs.mode }}"
+          DRY_RUN="${{ steps.determine-mode.outputs.dry_run }}"
+
+          echo "▶ Mod: $MODE | Dry run: $DRY_RUN"
+
+          if [ "$DRY_RUN" = "true" ]; then
+            python src/main.py --mode "$MODE" --dry-run
+          else
+            python src/main.py --mode "$MODE"
+          fi

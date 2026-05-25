@@ -1,0 +1,57 @@
+# Şehir koordinatları ve timezone bilgisi
+# Yeni şehir eklemek için buraya 4 satır ekleyip commit at:
+#   SehirAdi:
+#     lat: 00.0000
+#     lon: 00.0000
+#     timezone: "Continent/City"  # https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
+
+cities:
+  Riga:
+    lat: 56.9496
+    lon: 24.1052
+    timezone: "Europe/Riga"
+
+  Istanbul:
+    lat: 41.0082
+    lon: 28.9784
+    timezone: "Europe/Istanbul"
+
+  Kocaeli:
+    lat: 40.7654
+    lon: 29.9408
+    timezone: "Europe/Istanbul"
+
+  Ankara:
+    lat: 39.9334
+    lon: 32.8597
+    timezone: "Europe/Istanbul"
+
+  Izmir:
+    lat: 38.4192
+    lon: 27.1287
+    timezone: "Europe/Istanbul"
+
+  Berlin:
+    lat: 52.5200
+    lon: 13.4050
+    timezone: "Europe/Berlin"
+
+  London:
+    lat: 51.5074
+    lon: -0.1278
+    timezone: "Europe/London"
+
+  Amsterdam:
+    lat: 52.3676
+    lon: 4.9041
+    timezone: "Europe/Amsterdam"
+
+  Paris:
+    lat: 48.8566
+    lon: 2.3522
+    timezone: "Europe/Paris"
+
+  New York:
+    lat: 40.7128
+    lon: -74.0060
+    timezone: "America/New_York"

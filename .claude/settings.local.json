@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell($file = Get-Item \"C:\\\\Users\\\\batuh\\\\OneDrive\\\\Masaüstü\\\\Github Repos\\\\daily-weather-analyser\\\\readme.md\"; Write-Host \"File size: $\\($file.Length\\) bytes\"; [System.IO.File]::ReadAllText\\($file.FullName\\))"
+    ]
+  }
+}
