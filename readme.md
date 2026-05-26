@@ -1,5 +1,10 @@
 # 🌤️ Daily Weather Analyser
 
+![Python](https://img.shields.io/badge/Python-3.11-blue)
+![Gemini](https://img.shields.io/badge/Gemini-3.1%20Flash%20Lite-orange)
+![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-automated-green)
+![Open-Meteo](https://img.shields.io/badge/Open--Meteo-free%20API-lightblue)
+
 Her sabah **08:00** ve öğlen **12:00**'da GitHub Actions ile otomatik çalışan, birden fazla alıcıya konumlarına göre kişiselleştirilmiş hava durumu analizi ve giyim önerileri gönderen bir Python asistanı.
 
 Sabah maili: uyanır uyanmaz okuyabileceğin kısa bir özet + detaylı analiz.  
@@ -94,9 +99,9 @@ python src/main.py --mode morning
 
 ## Teknolojiler
 
-| Bileşen        | Teknoloji                                                     |
-| -------------- | ------------------------------------------------------------- |
-| Hava verisi    | [Open-Meteo](https://open-meteo.com/) — ücretsiz, API key yok |
-| AI analiz      | Google Gemini 3.1 Flash Lite                                  |
-| Mail gönderimi | Gmail SMTP                                                    |
-| Zamanlama      | GitHub Actions                                                |
+| Bileşen        | Teknoloji                             |
+| -------------- | ------------------------------------- |
+| Hava verisi    | [Open-Meteo](https://open-meteo.com/) |
+| AI analiz      | Google Gemini 3.1 Flash Lite          |
+| Mail gönderimi | Gmail SMTP                            |
+| Zamanlama      | GitHub Actions                        |
