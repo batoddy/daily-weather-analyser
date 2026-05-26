@@ -61,16 +61,23 @@ Tarih: {summary.get('hourly_data', [{}])[0].get('date', 'bugün') if summary.get
 - {rain_info}
 
 === GÖREV ===
-Aşağıdaki formatta KISA ve PRATİK bir sabah raporu yaz (düz metin, HTML kullanma).
-Aşırı uzun olmasın. Emoji kullan. Sıcaklık ve giyim bilgileri NET olsun.
+Aşağıdaki formatta sabah raporu yaz (düz metin, HTML kullanma).
 
-Format şöyle olmalı:
-1. Kısa selamlama + şehir + tarih başlığı
-2. 🌡️ Sıcaklık özeti (sabah/öğle/akşam trendi, hissedilen)
-3. 🌧️ Yağmur durumu (varsa hangi saatler, yoksa kısaca "yağmur yok")
-4. 💨 Rüzgar durumu (önemli değilse tek cümle yeter)
-5. 👗 Giyim önerisi (bunu özellikle detaylı yap — sabah/öğle/akşam için ne giyilmeli, mont alınmalı mı, şemsiye gerek var mı)
+--- ÖZET ---
+Yeni uyanmış, henüz kahvesini bile içmemiş biri için yaz. Sade, samimi, doğal bir dil.
+1-2 cümle. Şunları içermeli: hava nasıl (sıcak/soğuk/ılık), yağmur veya sert rüzgar varsa saat ver, ne giymeli.
+Sanki bir arkadaşın mesaj atıyormuş gibi — teknik değil, insan gibi konuş.
+Örnek: "Bugün fena soğuk (8°C, hissedilen 5°C), mont olmadan çıkma. Öğleden sonra 14:00'te yağmur da başlıyor, şemsiyeni al."
+Örnek: "Güzel bir gün seni bekliyor, 24°C güneşli. Akşam 21:00 civarı serinleyecek ama çok değil, ince bir şey yeter."
+Örnek: "Bugün karışık — sabah ılık (18°C) ama öğle 13:00'ten sonra ani soğuma var (10°C'ye düşüyor), yanına bir mont at."
 
+--- Detaylı Analiz ---
+🌡️ Sıcaklık: gün içi trend, hissedilen sıcaklık, en düşük ve en yüksek
+🌧️ Yağmur: varsa hangi saatler, şiddet ve tahmini süre — yoksa bu satırı atla
+💨 Rüzgar: dikkat çekecek kadar güçlüyse yaz (hız + saat), normalse atla
+⚠️ Ani değişimler: gün içinde beklenmedik bir yağmur, ani rüzgar artışı veya ani soğuma varsa saatiyle birlikte uyarı ver — yoksa bu satırı atla
+
+Detaylı analiz sabah okunabilecek uzunlukta olsun, aşırı uzatma.
 Sadece düz metin döndür, kesinlikle HTML tag'i kullanma.
 """
     return prompt
@@ -123,16 +130,22 @@ Sen bir kişisel hava durumu asistanısın. Aşağıdaki verileri kullanarak
 - {rain_info}
 
 === GÖREV ===
-KISA bir öğlen güncellemesi yaz (HTML formatında, emoji ile).
-Sabah bilgilerini tekrarlama. Sadece öğleden sonra ve akşama odaklan.
+Aşağıdaki formatta öğlen güncellemesi yaz (düz metin, HTML kullanma).
+Sabah zaten rapor aldı, tekrar etme. Sadece öğleden sonra ve akşama odaklan.
 
-Format:
-1. Kısa "günaydın güncelleme" girişi
-2. 🌡️ Öğleden sonra + akşam sıcaklık trendi (akşam soğuyacak mı?)
-3. 🌧️ Yağmur/hava değişikliği uyarısı (varsa)
-4. 👗 Güncellenen giyim/ekipman önerisi (akşam için mont gerek mi, şemsiye unutma gibi)
+--- ÖZET ---
+Samimi, arkadaş gibi bir dille 1-2 cümle. Öğleden sonra ne değişiyor, akşam nasıl, uyarı var mı?
+Örnek: "Akşam 19:00'da yağmur geliyor, şemsiyeni unutma."
+Örnek: "Geri kalan gün sakin geçecek ama akşam 10°C'ye düşüyor, üşümek istemiyorsan bir şeyler al yanına."
+Örnek: "Şu an iyi ama 16:00'dan sonra hava bozuluyor, ani rüzgar ve yağmur var — dışarıda planın varsa dikkat."
 
-Sadece HTML body içeriğini döndür (html/body tag'leri olmadan).
+--- Detaylı Analiz ---
+🌡️ Sıcaklık: öğleden sonra + akşam trendi ve hissedilen
+🌧️ Yağmur: varsa saat ve şiddet — yoksa bu satırı atla
+💨 Rüzgar: dikkat çekecek kadar güçlüyse yaz — yoksa atla
+⚠️ Ani değişimler: beklenmedik yağmur, ani rüzgar, ani soğuma varsa saatiyle uyar — yoksa atla
+
+Sadece düz metin döndür, kesinlikle HTML tag'i kullanma.
 """
     return prompt
 

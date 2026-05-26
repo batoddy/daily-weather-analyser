@@ -16,6 +16,11 @@ cities:
     lon: 28.9784
     timezone: "Europe/Istanbul"
 
+  Kadikoy:
+    lat: 40.5900
+    lon: 29.0300
+    timezone: "Europe/Istanbul"
+
   Kocaeli:
     lat: 40.7654
     lon: 29.9408

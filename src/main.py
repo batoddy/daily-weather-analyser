@@ -35,7 +35,6 @@ from weather_fetcher import fetch_hourly_forecast, summarize_forecast
 from ai_analyzer import analyze_weather
 from email_sender import send_email, build_subject
 
-
 # Logging ayarları
 logging.basicConfig(
     level=logging.INFO,
@@ -143,7 +142,9 @@ def process_recipient(
             summary=summary,
             mode=mode,
         )
-        log.info(f"[{name}] ✅ Gemini analizi tamamlandı ({len(html_content)} karakter)")
+        log.info(
+            f"[{name}] ✅ Gemini analizi tamamlandı ({len(html_content)} karakter)"
+        )
     except Exception as e:
         log.error(f"[{name}] ❌ Gemini analizi başarısız: {e}")
         return False
