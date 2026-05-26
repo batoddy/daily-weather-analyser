@@ -5,6 +5,7 @@ Minimal Gemini client using the Google Gen AI SDK.
 """
 
 from google import genai
+from google.genai import types
 
 from core.config import Config
 
@@ -25,6 +26,7 @@ class GeminiClient:
         response = self.client.models.generate_content(
             model=self.model_name,
             contents=prompt,
+            config=types.GenerateContentConfig(temperature=0),
         )
 
         if not response or not response.text:

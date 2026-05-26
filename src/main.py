@@ -122,6 +122,7 @@ def process_recipient(
             lat=city_data["lat"],
             lon=city_data["lon"],
             timezone_str=city_data["timezone"],
+            mode=mode,
         )
         summary = summarize_forecast(forecast)
         log.info(
@@ -148,6 +149,11 @@ def process_recipient(
     except Exception as e:
         log.error(f"[{name}] ❌ Gemini analizi başarısız: {e}")
         return False
+
+    # Veri kaynağı footer'ı ekle
+    source = summary.get("source", "open-meteo")
+    source_label = "MET Norway (yr.no)" if source == "met-norway" else "Open-Meteo"
+    html_content += f"\n\n---\n📡 Veri kaynağı: {source_label}"
 
     # 3. Mail gönder
     subject = build_subject(city_name, mode, language)

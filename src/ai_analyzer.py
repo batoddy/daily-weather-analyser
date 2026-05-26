@@ -54,28 +54,32 @@ Tarih: {summary.get('hourly_data', [{}])[0].get('date', 'bugün') if summary.get
 {hourly_text}
 
 === ÖZET ===
-- Sıcaklık aralığı: {summary['temp_min']}°C – {summary['temp_max']}°C
-- Hissedilen sıcaklık: {summary['feels_min']}°C – {summary['feels_max']}°C
-- Ortalama rüzgar: {summary['wind_avg']} km/h, maksimum: {summary['wind_max']} km/h
+- Sabah (06-12) ort.: {summary.get('morning_avg', '—')}°C
+- Öğle (12-19) ort.: {summary.get('afternoon_avg', '—')}°C
+- Akşam (19-23) ort.: {summary.get('evening_avg', '—')}°C
+- Dönem geneli ort.: {summary['temp_avg']}°C | Min: {summary['temp_min']}°C | Maks: {summary['temp_max']}°C
+- Hissedilen: {summary['feels_min']}°C – {summary['feels_max']}°C
+- Rüzgar: ort. {summary['wind_avg']} km/h, maks. {summary['wind_max']} km/h
 - En yüksek yağmur olasılığı: %{summary['max_precip_prob']}
 - {rain_info}
 
 === GÖREV ===
 Aşağıdaki formatta sabah raporu yaz (düz metin, HTML kullanma).
+Bu rapor 08:00–12:00 arası hava verisini kapsar.
 
 --- ÖZET ---
 Yeni uyanmış, henüz kahvesini bile içmemiş biri için yaz. Sade, samimi, doğal bir dil.
 1-2 cümle. Şunları içermeli: hava nasıl (sıcak/soğuk/ılık), yağmur veya sert rüzgar varsa saat ver, ne giymeli.
 Sanki bir arkadaşın mesaj atıyormuş gibi — teknik değil, insan gibi konuş.
-Örnek: "Bugün fena soğuk (8°C, hissedilen 5°C), mont olmadan çıkma. Öğleden sonra 14:00'te yağmur da başlıyor, şemsiyeni al."
-Örnek: "Güzel bir gün seni bekliyor, 24°C güneşli. Akşam 21:00 civarı serinleyecek ama çok değil, ince bir şey yeter."
-Örnek: "Bugün karışık — sabah ılık (18°C) ama öğle 13:00'ten sonra ani soğuma var (10°C'ye düşüyor), yanına bir mont at."
+Örnek: "Sabah fena soğuk (8°C, hissedilen 5°C), mont olmadan çıkma. 10:00 civarı yağmur da başlıyor, şemsiyeni al."
+Örnek: "Güneşli bir sabah seni bekliyor, 22°C. Saat 11:00'den sonra biraz serinleyecek ama çok değil."
+Örnek: "Sabah ılık (18°C) ama 10:00'dan itibaren ani soğuma var (12°C'ye düşüyor), üstüne bir şeyler al."
 
 --- Detaylı Analiz ---
-🌡️ Sıcaklık: gün içi trend, hissedilen sıcaklık, en düşük ve en yüksek
-🌧️ Yağmur: varsa hangi saatler, şiddet ve tahmini süre — yoksa bu satırı atla
-💨 Rüzgar: dikkat çekecek kadar güçlüyse yaz (hız + saat), normalse atla
-⚠️ Ani değişimler: gün içinde beklenmedik bir yağmur, ani rüzgar artışı veya ani soğuma varsa saatiyle birlikte uyarı ver — yoksa bu satırı atla
+🌡️ Sıcaklık: sabah trendi ve hissedilen, ortalama sıcaklık da belirt
+🌧️ Yağmur: varsa hangi saatler ve şiddet — yoksa bu satırı atla
+💨 Rüzgar: dikkat çekecek kadar güçlüyse yaz (hız + saat) — normalse atla
+⚠️ Ani değişimler: beklenmedik yağmur, ani rüzgar artışı veya ani soğuma varsa saatiyle uyar — yoksa atla
 
 Detaylı analiz sabah okunabilecek uzunlukta olsun, aşırı uzatma.
 Sadece düz metin döndür, kesinlikle HTML tag'i kullanma.
@@ -124,13 +128,16 @@ Sen bir kişisel hava durumu asistanısın. Aşağıdaki verileri kullanarak
 {hourly_text}
 
 === ÖZET ===
-- Sıcaklık aralığı: {summary['temp_min']}°C – {summary['temp_max']}°C
+- Öğle (12-19) ort.: {summary.get('afternoon_avg', '—')}°C
+- Akşam (19-23) ort.: {summary.get('evening_avg', '—')}°C
+- Dönem geneli ort.: {summary['temp_avg']}°C | Min: {summary['temp_min']}°C | Maks: {summary['temp_max']}°C
 - Hissedilen: {summary['feels_min']}°C – {summary['feels_max']}°C
 - Rüzgar: ort. {summary['wind_avg']} km/h, maks. {summary['wind_max']} km/h
 - {rain_info}
 
 === GÖREV ===
 Aşağıdaki formatta öğlen güncellemesi yaz (düz metin, HTML kullanma).
+Bu rapor 12:00–23:00 arası hava verisini kapsar, yarına taşmaz.
 Sabah zaten rapor aldı, tekrar etme. Sadece öğleden sonra ve akşama odaklan.
 
 --- ÖZET ---
@@ -140,7 +147,7 @@ Samimi, arkadaş gibi bir dille 1-2 cümle. Öğleden sonra ne değişiyor, akş
 Örnek: "Şu an iyi ama 16:00'dan sonra hava bozuluyor, ani rüzgar ve yağmur var — dışarıda planın varsa dikkat."
 
 --- Detaylı Analiz ---
-🌡️ Sıcaklık: öğleden sonra + akşam trendi ve hissedilen
+🌡️ Sıcaklık: öğleden sonra + akşam trendi, ortalama ve hissedilen
 🌧️ Yağmur: varsa saat ve şiddet — yoksa bu satırı atla
 💨 Rüzgar: dikkat çekecek kadar güçlüyse yaz — yoksa atla
 ⚠️ Ani değişimler: beklenmedik yağmur, ani rüzgar, ani soğuma varsa saatiyle uyar — yoksa atla

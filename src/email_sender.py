@@ -20,18 +20,19 @@ SMTP_PORT = 587
 
 
 def build_subject(city: str, mode: str, language: str = "tr") -> str:
-    """Mail konu satırını oluşturur."""
-    today = datetime.now().strftime("%d %B")
+    """Mail konu satırını oluşturur. Tarih + saat eklenerek her mail benzersiz olur (threading önlenir)."""
+    now = datetime.now()
+    date_str = now.strftime("%d %B %Y")
     if language == "tr":
         if mode == "morning":
-            return f"☀️ {city} Sabah Hava Raporu — {today}"
+            return f"☀️ {city} — {date_str} Sabah"
         else:
-            return f"🌤️ {city} Öğlen Güncellemesi — {today}"
+            return f"🌤️ {city} — {date_str} Öğlen"
     else:
         if mode == "morning":
-            return f"☀️ {city} Morning Weather Report — {today}"
+            return f"☀️ {city} — {date_str} Morning"
         else:
-            return f"🌤️ {city} Afternoon Update — {today}"
+            return f"🌤️ {city} — {date_str} Afternoon"
 
 
 def send_email(
