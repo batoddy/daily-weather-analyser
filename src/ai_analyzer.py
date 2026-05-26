@@ -5,18 +5,7 @@ Google Gemini API kullanarak hava durumu verilerini analiz eder
 ve kişiselleştirilmiş giyim önerileri + günlük özet üretir.
 """
 
-import os
-import json
-import google.generativeai as genai
-
-
-def _get_gemini_client():
-    """Gemini API istemcisini başlatır."""
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        raise EnvironmentError("GEMINI_API_KEY environment variable bulunamadı.")
-    genai.configure(api_key=api_key)
-    return genai.GenerativeModel("gemini-1.5-flash")
+from core.gemini_client import GeminiClient
 
 
 def _build_morning_prompt(recipient: dict, city: str, summary: dict, language: str) -> str:
@@ -72,7 +61,7 @@ Tarih: {summary.get('hourly_data', [{}])[0].get('date', 'bugün') if summary.get
 - {rain_info}
 
 === GÖREV ===
-Aşağıdaki formatta KISA ve PRATİK bir sabah raporu yaz (HTML formatında).
+Aşağıdaki formatta KISA ve PRATİK bir sabah raporu yaz (düz metin, HTML kullanma).
 Aşırı uzun olmasın. Emoji kullan. Sıcaklık ve giyim bilgileri NET olsun.
 
 Format şöyle olmalı:
@@ -82,8 +71,7 @@ Format şöyle olmalı:
 4. 💨 Rüzgar durumu (önemli değilse tek cümle yeter)
 5. 👗 Giyim önerisi (bunu özellikle detaylı yap — sabah/öğle/akşam için ne giyilmeli, mont alınmalı mı, şemsiye gerek var mı)
 
-Sadece HTML body içeriğini döndür (html/body tag'leri olmadan).
-Stil için sadece <b>, <br>, <span style="color:..."> kullanabilirsin.
+Sadece düz metin döndür, kesinlikle HTML tag'i kullanma.
 """
     return prompt
 
@@ -168,19 +156,10 @@ def analyze_weather(
         HTML formatında mail içeriği (body içeriği)
     """
     language = recipient.get("language", "tr")
-    model = _get_gemini_client()
 
     if mode == "morning":
         prompt = _build_morning_prompt(recipient, city, summary, language)
     else:
         prompt = _build_noon_prompt(recipient, city, summary, language)
 
-    response = model.generate_content(
-        prompt,
-        generation_config=genai.GenerationConfig(
-            temperature=0.7,
-            max_output_tokens=1024,
-        ),
-    )
-
-    return response.text
+    return GeminiClient().generate(prompt)

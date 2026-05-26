@@ -10,7 +10,9 @@ Gerekli env variable'lar:
 """
 
 import os
+import re
 import smtplib
+import uuid
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from datetime import datetime
@@ -145,14 +147,21 @@ def send_email(
     # Tam HTML şablona sar
     full_html = _wrap_html(html_body, recipient_name, city, mode)
 
+    # HTML'den düz metin türet (spam skoru düşürür)
+    plain_text = re.sub(r"<[^>]+>", "", html_body).strip()
+    plain_text = re.sub(r"\n{3,}", "\n\n", plain_text)
+
     # MIME mesajı oluştur
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
     msg["From"] = f"Hava Durumu Asistanı <{gmail_user}>"
     msg["To"] = to_email
+    msg["Message-ID"] = f"<{uuid.uuid4()}@weather-analyser>"
 
-    # HTML parçası ekle
+    # Önce plain text, sonra HTML ekle (RFC 2046: son eklenen tercih edilir)
+    plain_part = MIMEText(plain_text, "plain", "utf-8")
     html_part = MIMEText(full_html, "html", "utf-8")
+    msg.attach(plain_part)
     msg.attach(html_part)
 
     # SMTP bağlantısı kur ve gönder

@@ -61,10 +61,13 @@ jobs:
 
       - name: Hava durumu raporu gönder
         env:
+          # 🔒 Secrets — hassas veriler
           RECIPIENTS: ${{ secrets.RECIPIENTS }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          # 📋 Variables — hassas olmayan config (Settings → Variables'dan override edilebilir)
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
         run: |
           MODE="${{ steps.determine-mode.outputs.mode }}"
           DRY_RUN="${{ steps.determine-mode.outputs.dry_run }}"
