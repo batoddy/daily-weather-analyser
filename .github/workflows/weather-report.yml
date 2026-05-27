@@ -3,9 +3,9 @@ name: Daily Weather Report
 on:
   schedule:
     # Sabah 08:00 — Riga/İstanbul (UTC+3, yaz saati) = 05:00 UTC
-    - cron: '0 5 * * *'
+    - cron: '9 5 * * *'
     # Öğlen 12:00 — Riga/İstanbul (UTC+3, yaz saati) = 09:00 UTC
-    - cron: '0 9 * * *'
+    - cron: '12 9 * * *'
 
   # Elle tetikleme — Actions sekmesinden test için
   workflow_dispatch:
