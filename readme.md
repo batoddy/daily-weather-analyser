@@ -1,107 +1,146 @@
-# 🌤️ Daily Weather Analyser
+# 🌤️ Daily Weather Bot
 
-![Python](https://img.shields.io/badge/Python-3.11-blue)
-![Gemini](https://img.shields.io/badge/Gemini-3.1%20Flash%20Lite-orange)
-![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-automated-green)
-![Open-Meteo](https://img.shields.io/badge/Open--Meteo-free%20API-lightblue)
-
-Her sabah **08:00** ve öğlen **12:00**'da GitHub Actions ile otomatik çalışan, birden fazla alıcıya konumlarına göre kişiselleştirilmiş hava durumu analizi ve giyim önerileri gönderen bir Python asistanı.
-
-Sabah maili: uyanır uyanmaz okuyabileceğin kısa bir özet + detaylı analiz.  
-Öğlen maili: öğleden sonra ve akşam için güncelleme.
-
-## Özellikler
-
-- 📍 Çoklu şehir desteği — her alıcı farklı bir konumda olabilir
-- 🌡️ Saatlik sıcaklık ve hissedilen sıcaklık analizi
-- 🌧️ Yağmur tahmini — varsa saat ve şiddetiyle
-- 💨 Rüzgar uyarısı — ani artışlar saatiyle belirtilir
-- ⚠️ Ani hava değişimi uyarıları
-- 🧥 Doğal dilde kıyafet önerisi
-- 🌍 Dil desteği: Türkçe / İngilizce (alıcıya göre)
-- 🔒 Kişisel veriler GitHub Secrets'ta, koordinatlar repoda açık
-
-## Nasıl Çalışır
+Her kişiye **kendi seçtiği saatte**, **evden çıkış–dönüş saatleri arasındaki** havaya göre
+"ne giyeyim, yanıma ne alayım" mesajı atan Telegram botu. Dönüşten önce yağmur, sert rüzgar
+ya da aşırı hava olayı varsa ayrıca uyarır.
 
 ```
-Open-Meteo API → saatlik hava verisi
-      ↓
-Gemini 3.1 Flash Lite → analiz + öneri
-      ↓
-Gmail SMTP → kişiselleştirilmiş mail
+🧥 MONT  ·  ☔ ŞEMSİYE                   ← bildirimde görünen satır
+━━━━━━━━━━━━━━
+🌡️ 14° ➜ 9° ➜ 14°  (hissedilen 6°–12°)
+📉 Dünden 5° daha soğuk
+☔ 17:00–19:00 yağmur
+💨 Rüzgarlı, olduğundan soğuk hissettirir
+
+☀️ Günaydın Batuhan!
+Rüzgar yüzünden serin hissettirecek, rüzgar ve su geçirmeyen bir mont giy.
+Akşam yağmur var, şemsiyeni unutma.
+
+▸ Detaylar (dokununca açılır: saat saat sıcaklık, rüzgar hızı, yağış mm…)
 ```
+
+Aşırı hava olayı varsa en üstte `⚠️ FIRTINA 16:00–18:00` gibi ayrı bir satır olur.
+
+## Nasıl çalışır
+
+| Parça | Ne |
+|---|---|
+| Çalışma ortamı | Cloudflare Workers (TypeScript), ücretsiz plan |
+| Veri | Cloudflare D1 (SQLite) |
+| Zamanlama | Cron her 15 dakikada bir; saati gelen kullanıcıya gönderir |
+| Hava verisi | [Open-Meteo](https://open-meteo.com/) (dün + bugün + yarın, saatlik) |
+| Konum | Telegram konum paylaşımı veya [Nominatim/OSM](https://nominatim.org/) araması |
+| Yorum | Kural motoru karar verir → Gemini anlatır → doğrulanır; olmazsa şablon |
+
+```
+Telegram ──webhook──▶ fetch()     → kurulum, /ayarlar, /simdi … → D1
+Cron */15 ─────────▶ scheduled() → zamanı gelenler → Open-Meteo → özet → kurallar → mesaj
+```
+
+- **Sayılar** (sıcaklık, hissedilen, rüzgar, yağmur) her zaman koddan gelir; LLM sayı üretmez.
+- **Giyim kararı** kural motorundadır ([src/advice/](src/advice/)). Rüzgar ve yağmur kademeyi artırır,
+  sıcak ama esintili havada "ince uzun kollu" önerir. Eşikler: [thresholds.ts](src/advice/thresholds.ts).
+- **LLM (Gemini)** kararı samimi bir dille anlatır. Çıktıda veride olmayan bir sayı varsa ya da bir
+  uyarıya değinilmemişse reddedilir, bir kez tekrar denenir, yine olmazsa şablon metin gider.
+- **Gün içi uyarı:** dönüşten 2 saat önce kalan saatlere bakılır. Yağmur, sert rüzgar ya da aşırı
+  hava olayı (fırtına, dolu, yoğun kar, buzlanma, aşırı sıcak/soğuk) varsa ayrı mesaj gider.
+- **Erişim:** yeni kullanıcı `/start` yazınca yöneticiye onay isteği düşer.
 
 ## Kurulum
 
-### 1. Şehirleri ekle
+Gerekenler: Node.js (portable da olur), bir Telegram hesabı, ücretsiz bir Cloudflare hesabı,
+[Gemini API anahtarı](https://aistudio.google.com/).
 
-`config/cities.yaml` dosyasına şehir koordinatlarını ekle:
+Portable Node kullanıyorsan önce PATH'e ekle (PowerShell, sadece o pencere için):
 
-```yaml
-SehirAdi:
-  lat: 00.0000
-  lon: 00.0000
-  timezone: "Continent/City"
+```powershell
+$env:Path = "C:\Users\batuh\tools\node;$env:Path"
 ```
 
-### 2. GitHub Secrets ekle
+1. **Bağımlılıklar:** `npm install`
+2. **Telegram botu:** Telegram'da [@BotFather](https://t.me/BotFather) → `/newbot` → token'ı kopyala.
+3. **Cloudflare girişi:** `npx wrangler login`
+4. **Veritabanı:**
+   ```powershell
+   npx wrangler d1 create weather-bot
+   ```
+   Çıktıdaki `database_id`'yi [wrangler.jsonc](wrangler.jsonc) içine yapıştır, sonra:
+   ```powershell
+   npm run db:migrate:remote
+   ```
+5. **Gizli değerler:**
+   ```powershell
+   npx wrangler secret put TELEGRAM_BOT_TOKEN        # BotFather'dan
+   npx wrangler secret put TELEGRAM_WEBHOOK_SECRET   # rastgele uzun bir string (harf/rakam)
+   npx wrangler secret put GEMINI_API_KEY
+   npx wrangler secret put ADMIN_CHAT_ID             # şimdilik 0 yaz, 8. adımda düzelt
+   ```
+6. **Deploy:** `npm run deploy` → çıktıdaki `https://daily-weather-bot.<hesap>.workers.dev` adresini not al.
+7. **Webhook'u bağla:** tarayıcıda bir kez aç:
+   `https://daily-weather-bot.<hesap>.workers.dev/setup?secret=<TELEGRAM_WEBHOOK_SECRET>`
+8. **Yönetici ol:** bota `/id` yaz → gelen sayıyı `npx wrangler secret put ADMIN_CHAT_ID` ile kaydet → bota `/start` yaz.
 
-GitHub → Settings → Secrets and variables → Actions:
+Artık başkaları bota `/start` yazdığında sana onay isteği gelir.
 
-| Secret               | Açıklama                                                      |
-| -------------------- | ------------------------------------------------------------- |
-| `GEMINI_API_KEY`     | [aistudio.google.com](https://aistudio.google.com) → ücretsiz |
-| `GMAIL_USER`         | Gönderi yapacak Gmail adresi                                  |
-| `GMAIL_APP_PASSWORD` | Gmail → Güvenlik → Uygulama Şifreleri                         |
-| `RECIPIENTS`         | JSON array (aşağıya bak)                                      |
+## Komutlar
 
-**RECIPIENTS formatı** (tek satır, boşluksuz):
+| Komut | Ne yapar |
+|---|---|
+| `/start` | Kurulum (onaydan sonra) |
+| `/simdi` · `/now` | Anlık rapor (dönüş saati geçtiyse yarının raporu) |
+| `/uyari` · `/alert` | Gün içi uyarının şu an ne diyeceği (dönüşe kadar yağmur/rüzgar/aşırı olay) |
+| `/ayarlar` · `/settings` | Konum, saatler, hassasiyet, günler, dil |
+| `/durdur` · `/stop`, `/devam` · `/resume` | Bildirimleri kapat / aç |
+| `/sil` · `/delete` | Tüm veriyi sil |
+| `/id` | Sohbet kimliği |
 
-```json
-[
-  { "name": "Ad", "email": "mail@gmail.com", "city": "Riga", "language": "tr" },
-  {
-    "name": "Ad2",
-    "email": "mail2@gmail.com",
-    "city": "Istanbul",
-    "language": "tr"
-  }
-]
+## Lokalde test
+
+Lokal ayarlar `.dev.vars` dosyasında ([.dev.vars.example](.dev.vars.example)'dan kopyala). İlk seferde bir kez:
+`npm install` ve `npm run db:migrate:local`.
+
+**1. Tarayıcıda önizleme:** Deploy ve Telegram gerekmez.
+
+```powershell
+npm run dev
 ```
 
-### 3. Test et
+Sonra tarayıcıda aç: <http://localhost:8787/preview?yer=Kadıköy&cikis=08:15&donus=19:00&saat=07:30>
 
-Actions → **Daily Weather Report** → **Run workflow** → `morning`
+Sayfada sabah mesajı, Gemini'nin ham cevabı ve doğrulama sonucu, `/uyari`'nın ne diyeceği ve kural motorunun kararı görünür.
+Parametreler: `yer` (ya da `lat`/`lon`), `cikis`, `donus`, `dil` (tr/en), `hassasiyet` (-1/0/1), `saat` (o saatteymiş gibi), `isim`.
 
-## Lokal Test
+**2. Gerçek Telegram botuyla, kod bilgisayarında:**
 
-```bash
-python -m venv venv
-venv\Scripts\activate      # Windows
-pip install -r requirements.txt
+1. `.dev.vars`'ta `DRY_RUN=false` yap.
+2. Terminal 1: `npm run dev`
+3. Terminal 2: `npm run bot:local`. Telegram'dan mesajları çekip lokal sunucuya iletir, dakikada bir zamanlayıcıyı tetikler.
+4. Telegram'da bota `/id` yaz. Gelen sayıyı `.dev.vars`'taki `ADMIN_CHAT_ID`'ye koy, Terminal 1'i yeniden başlat (Ctrl+C → `npm run dev`).
+5. Bota `/start` yaz.
 
-# .env dosyasını doldur
-cp .env.example .env
+Bot canlıya alındıysa `bot:local` webhook'u kaldırır. Canlıya dönmek için `/setup` adresini tekrar aç.
 
-# Mail göndermeden test et
-python src/main.py --mode morning --dry-run
+**3. Birim testleri:** `npm test` · `npm run typecheck`
 
-# Gerçek mail gönder
-python src/main.py --mode morning
+## Geliştirme
+
+**Loglar:** `npx wrangler tail` ya da Cloudflare panelinde Workers → daily-weather-bot → Logs.
+**Yedek:** `npx wrangler d1 export weather-bot --remote --output yedek.sql`
+
+## Proje yapısı
+
 ```
-
-## Zamanlama
-
-| Tetiklenme         | Yerel saat            | UTC (yaz) |
-| ------------------ | --------------------- | --------- |
-| Sabah raporu       | 08:00 (Riga/İstanbul) | 05:00     |
-| Öğlen güncellemesi | 12:00 (Riga/İstanbul) | 09:00     |
-
-## Teknolojiler
-
-| Bileşen        | Teknoloji                             |
-| -------------- | ------------------------------------- |
-| Hava verisi    | [Open-Meteo](https://open-meteo.com/) |
-| AI analiz      | Google Gemini 3.1 Flash Lite          |
-| Mail gönderimi | Gmail SMTP                            |
-| Zamanlama      | GitHub Actions                        |
+src/
+├── index.ts            # webhook + /setup + cron
+├── service.ts          # rapor/uyarı üretimi, cron turu
+├── schedule.ts         # kime ne zaman ne gider (saf fonksiyonlar)
+├── telegram.ts         # Bot API sarmalayıcı (DRY_RUN destekli)
+├── time.ts             # saat dilimi ve HH:MM yardımcıları
+├── bot/                # komutlar, kurulum adımları, ayarlar, arayüz metinleri
+├── weather/            # Open-Meteo, Nominatim, özetleme
+├── advice/             # kural motoru + eşikler
+├── message/            # mesaj şablonları (tr/en), Gemini, çıktı doğrulama
+└── db/                 # D1 erişimi
+migrations/             # D1 şeması
+test/                   # vitest
+```

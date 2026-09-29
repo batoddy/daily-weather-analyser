@@ -1,0 +1,26 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "daily-weather-bot",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-20",
+  "observability": { "enabled": true },
+
+  // Her 15 dakikada bir: zamanı gelen kullanıcılara rapor / uyarı gönderir
+  "triggers": { "crons": ["*/15 * * * *"] },
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "weather-bot",
+      "database_id": "d37c1c7b-37a4-46ec-8449-1ed36042a958",
+      "migrations_dir": "migrations"
+    }
+  ],
+
+  // Gizli olmayan ayarlar. Gizli değerler: `npx wrangler secret put <AD>`
+  //   TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET, GEMINI_API_KEY, ADMIN_CHAT_ID
+  "vars": {
+    "GEMINI_MODEL": "gemini-3.5-flash-lite",
+    "DRY_RUN": "false"
+  }
+}

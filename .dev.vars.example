@@ -1,0 +1,6 @@
+# Lokal geliştirme için (git'e girmez). Canlıda: npx wrangler secret put <AD>
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_WEBHOOK_SECRET=local-dev-secret
+GEMINI_API_KEY=
+ADMIN_CHAT_ID=1000
+DRY_RUN=true
