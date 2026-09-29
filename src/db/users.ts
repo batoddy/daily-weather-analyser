@@ -91,6 +91,11 @@ export async function deleteUser(db: D1Database, chatId: number): Promise<void> 
   await db.prepare("DELETE FROM users WHERE chat_id = ?").bind(chatId).run();
 }
 
+export async function listAll(db: D1Database): Promise<User[]> {
+  const { results } = await db.prepare("SELECT * FROM users ORDER BY created_at").all<User>();
+  return results;
+}
+
 export async function listActive(db: D1Database): Promise<User[]> {
   const { results } = await db.prepare("SELECT * FROM users WHERE status = 'active' ORDER BY notify_time").all<User>();
   return results;

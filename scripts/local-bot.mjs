@@ -39,10 +39,10 @@ await tg("deleteWebhook");
 console.log(`🤖 @${me.username} lokal modda. Telegram'da bota yaz; Ctrl+C ile çık.`);
 console.log(`   Yönetici olmak için: bota /id yaz → sayıyı .dev.vars'taki ADMIN_CHAT_ID'ye koy → npm run dev'i yeniden başlat.\n`);
 
-// Zamanlayıcı: her dakika cron'u tetikle (canlıda 15 dakikada bir çalışır; mantık aynı)
+// Zamanlayıcı: her dakika cron'u tetikle (canlıda 5 dakikada bir çalışır; mantık aynı)
 setInterval(async () => {
   try {
-    await fetch(`${LOCAL}/__scheduled?cron=*/15+*+*+*+*`);
+    await fetch(`${LOCAL}/__scheduled?cron=*/5+*+*+*+*`);
   } catch {
     console.warn("⏰ cron tetiklenemedi (npm run dev çalışıyor mu?)");
   }

@@ -27,14 +27,14 @@ Aşırı hava olayı varsa en üstte `⚠️ FIRTINA 16:00–18:00` gibi ayrı b
 |---|---|
 | Çalışma ortamı | Cloudflare Workers (TypeScript), ücretsiz plan |
 | Veri | Cloudflare D1 (SQLite) |
-| Zamanlama | Cron her 15 dakikada bir; saati gelen kullanıcıya gönderir |
+| Zamanlama | Cron her 5 dakikada bir; saati gelen kullanıcıya gönderir (tur başına 10 kişi) |
 | Hava verisi | [Open-Meteo](https://open-meteo.com/) (dün + bugün + yarın, saatlik) |
 | Konum | Telegram konum paylaşımı veya [Nominatim/OSM](https://nominatim.org/) araması |
 | Yorum | Kural motoru karar verir → Gemini anlatır → doğrulanır; olmazsa şablon |
 
 ```
 Telegram ──webhook──▶ fetch()     → kurulum, /ayarlar, /simdi … → D1
-Cron */15 ─────────▶ scheduled() → zamanı gelenler → Open-Meteo → özet → kurallar → mesaj
+Cron */5 ──────────▶ scheduled() → zamanı gelenler → Open-Meteo → özet → kurallar → mesaj
 ```
 
 - **Sayılar** (sıcaklık, hissedilen, rüzgar, yağmur) her zaman koddan gelir; LLM sayı üretmez.
@@ -93,6 +93,7 @@ Artık başkaları bota `/start` yazdığında sana onay isteği gelir.
 | `/durdur` · `/stop`, `/devam` · `/resume` | Bildirimleri kapat / aç |
 | `/sil` · `/delete` | Tüm veriyi sil |
 | `/id` | Sohbet kimliği |
+| `/kullanicilar` · `/users` | **Sadece yönetici:** kullanıcılar, durumları, konum/saatler, son rapor; bekleyenler için Onayla/Reddet |
 
 ## Lokalde test
 

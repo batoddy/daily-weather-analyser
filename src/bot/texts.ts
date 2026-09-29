@@ -79,6 +79,16 @@ const tr = {
     `🆕 Yeni kullanıcı isteği\n<b>${name}</b>${username ? ` (@${username})` : ""}\nid: <code>${id}</code>`,
   adminApproved: (name: string) => `✅ ${name} onaylandı.`,
   adminRejected: (name: string) => `❌ ${name} reddedildi.`,
+  // Yönetici: /kullanicilar
+  usersTitle: (total: number, active: number, paused: number, pending: number, onboarding: number) =>
+    `👥 <b>Kullanıcılar (${total})</b>\n✅ ${active} aktif · ⏸ ${paused} durdurulmuş · ⏳ ${pending} onay bekliyor · 🛠 ${onboarding} kurulumda`,
+  userPending: (since: string) => `Onay bekliyor (${since}'den beri)`,
+  userOnboarding: (step: string) =>
+    `Kurulumda, şu adımda: ${
+      ({ lang: "dil", location: "konum", notify: "mesaj saati", leave: "çıkış saati", return: "dönüş saati", sens: "hassasiyet", days: "günler" } as Record<string, string>)[step] ?? step
+    }`,
+  userLastReport: (date: string | null) => (date ? `📨 Son rapor: ${date}` : "📨 Henüz rapor gitmedi"),
+  monthsShort: ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"],
 };
 
 export interface SettingsView {
@@ -164,12 +174,21 @@ const en: Texts = {
     "/delete — delete all my data",
     "/id — my chat id",
   ].join("\n"),
+  // Yönetici arayüzü sadece Türkçe
   adminRequest: tr.adminRequest,
   adminApproved: tr.adminApproved,
   adminRejected: tr.adminRejected,
+  usersTitle: tr.usersTitle,
+  userPending: tr.userPending,
+  userOnboarding: tr.userOnboarding,
+  userLastReport: tr.userLastReport,
+  monthsShort: tr.monthsShort,
 };
 
 export const TEXTS: Record<Lang, Texts> = { tr, en };
+
+/** Sadece yöneticinin menüsünde görünen ek komutlar. */
+export const ADMIN_COMMANDS = [{ command: "kullanicilar", description: "Kullanıcılar ve durumları" }];
 
 export const COMMANDS: Record<Lang, { command: string; description: string }[]> = {
   tr: [

@@ -33,7 +33,7 @@ Mimari ve kurulum: [readme.md](readme.md). Bu dosya kararları ve sıradaki işl
 ### İlk plandan sapmalar
 
 - **MET Norway yedeği kaldırıldı.** Open-Meteo başarısız olursa rapor gönderilmiş sayılmıyor,
-  15 dakika sonraki cron turunda tekrar deneniyor (2 saatlik pencere boyunca). Yedek kaynak
+  5 dakika sonraki cron turunda tekrar deneniyor (2 saatlik pencere boyunca). Yedek kaynak
   yağmur olasılığı ve hissedilen sıcaklık vermediği için kalitesiz rapor üretiyordu.
 - **Rüzgar + yağmur en fazla "mont" kademesine çıkarır.** Hissedilen sıcaklık rüzgarı zaten kısmen
   içerdiği için 6°'de rüzgar + yağmur "bere + eldiven"e çıkıyordu; bu kademe artık sadece

@@ -11,8 +11,13 @@ import { localNow, type LocalNow } from "./time";
 import { fetchHours, type Hour } from "./weather/openmeteo";
 import { hoursInWindow, rainSpans, severeEvents, summarize } from "./weather/summarize";
 
-/** Free planda istek başına 50 alt-istek sınırı var; bir kullanıcı ≈ 3-4 istek. Kalanlar sonraki tura kalır. */
-const MAX_ACTIONS_PER_TICK = 8;
+/**
+ * Ücretsiz planda her cron turu en fazla 50 dış istek (fetch) yapabilir. Bir rapor ≈ 3-4 istek
+ * (Open-Meteo aynı konum için paylaşılır + Gemini 1-2 + Telegram 1). Kalanlar 5 dk sonraki tura kalır;
+ * mesaj saatinden sonra 2 saat boyunca denendiği için kimse mesajsız kalmaz, sadece birkaç dakika gecikir.
+ * Ücretli planda (1000 istek) bu sayı rahatça 100+ yapılabilir.
+ */
+const MAX_ACTIONS_PER_TICK = 10;
 
 type HoursFetcher = (lat: number, lon: number, tz: string) => Promise<Hour[]>;
 
@@ -95,7 +100,7 @@ export async function runSchedule(env: Env): Promise<void> {
   }
 }
 
-/** Hata olursa tarih işaretlenmez, sonraki turda (15 dk sonra) tekrar denenir. */
+/** Hata olursa tarih işaretlenmez, sonraki turda (5 dk sonra) tekrar denenir. */
 async function attempt(env: Env, u: ReadyUser, what: string, fn: () => Promise<void>): Promise<void> {
   try {
     await fn();

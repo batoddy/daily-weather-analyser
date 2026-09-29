@@ -1,9 +1,9 @@
 // Worker giriş noktası.
 //   POST /telegram  → Telegram webhook (bot mesajları)
 //   GET  /setup     → webhook + komut menüsünü Telegram'a kaydeder (deploy sonrası bir kez)
-//   cron */15       → zamanı gelen kullanıcılara rapor / uyarı
+//   cron */5        → zamanı gelen kullanıcılara rapor / uyarı
 
-import { COMMANDS } from "./bot/texts";
+import { ADMIN_COMMANDS, COMMANDS } from "./bot/texts";
 import { handleUpdate } from "./bot/handlers";
 import { preview } from "./preview";
 import { runSchedule } from "./service";
@@ -40,6 +40,12 @@ export default {
       });
       await tg.call("setMyCommands", { commands: COMMANDS.en });
       await tg.call("setMyCommands", { commands: COMMANDS.tr, language_code: "tr" });
+      if (env.ADMIN_CHAT_ID && env.ADMIN_CHAT_ID !== "0") {
+        await tg.call("setMyCommands", {
+          commands: [...COMMANDS.tr, ...ADMIN_COMMANDS],
+          scope: { type: "chat", chat_id: Number(env.ADMIN_CHAT_ID) },
+        });
+      }
       return new Response(`Webhook kuruldu → ${url.origin}/telegram`);
     }
 

@@ -1,6 +1,6 @@
 // Telegram güncellemelerini işler: onay, kurulum adımları, ayarlar, komutlar.
 
-import { createUser, deleteUser, getUser, isReady, updateUser, type Step, type User } from "../db/users";
+import { createUser, deleteUser, getUser, isReady, listAll, updateUser, type Step, type User } from "../db/users";
 import { asLang, type Lang } from "../message/i18n";
 import { escapeHtml } from "../message/report";
 import { buildAlert, buildReport, cachedFetcher } from "../service";
@@ -35,6 +35,8 @@ const COMMAND_ALIASES: Record<string, string> = {
   yardim: "help",
   help: "help",
   id: "id",
+  kullanicilar: "users",
+  users: "users",
 };
 
 interface Ctx {
@@ -106,6 +108,9 @@ async function handleCommand(ctx: Ctx, command: string, user: User | null, msg: 
       return void (await tg.send(chatId, t.help));
     case "start":
       return start(ctx, user, msg);
+    case "users":
+      if (String(chatId) === env.ADMIN_CHAT_ID) return listUsers(ctx);
+      return void (await tg.send(chatId, t.unknown));
   }
 
   if (!user) return void (await tg.send(chatId, t.notRegistered));
@@ -389,6 +394,67 @@ async function sendReportNow(ctx: Ctx, user: User, afterOnboarding = false): Pro
     console.error("Anlık rapor:", e);
     await ctx.tg.send(ctx.chatId, t.reportError);
   }
+}
+
+/** Yönetici: tüm kullanıcılar ve durumları. Onay bekleyenlerin altına Onayla/Reddet butonları gelir. */
+async function listUsers(ctx: Ctx): Promise<void> {
+  const t = TEXTS.tr;
+  const users = await listAll(ctx.env.DB);
+  const count = (s: User["status"]) => users.filter((u) => u.status === s).length;
+  await ctx.tg.send(
+    ctx.chatId,
+    t.usersTitle(users.length, count("active"), count("paused"), count("pending"), count("onboarding")),
+  );
+
+  // Telegram mesaj sınırı 4096 karakter: kullanıcıları gruplar halinde gönder
+  let chunk: string[] = [];
+  const flush = async () => {
+    if (chunk.length > 0) await ctx.tg.send(ctx.chatId, chunk.join("\n\n"));
+    chunk = [];
+  };
+  for (const u of users) {
+    const block = userBlock(u, String(u.chat_id) === ctx.env.ADMIN_CHAT_ID);
+    if (u.status === "pending") {
+      // Bekleyenler ayrı mesaj: butonlar doğru kişiye bağlı kalsın
+      await flush();
+      await ctx.tg.send(ctx.chatId, block, {
+        inline_keyboard: [[btn(t.btn.approve, `ap:${u.chat_id}`), btn(t.btn.reject, `rj:${u.chat_id}`)]],
+      });
+      continue;
+    }
+    if ([...chunk, block].join("\n\n").length > 3800) await flush();
+    chunk.push(block);
+  }
+  await flush();
+}
+
+function userBlock(u: User, isAdmin: boolean): string {
+  const t = TEXTS.tr;
+  const name = `<b>${escapeHtml(u.name)}</b>${isAdmin ? " (sen)" : ""}`;
+  const icon = { active: "✅", paused: "⏸", pending: "⏳", onboarding: "🛠" }[u.status];
+  const lines = [`${icon} ${name} · <code>${u.chat_id}</code>`];
+  if (u.status === "pending") {
+    lines.push(`   ${t.userPending(shortDate(u.created_at.slice(0, 10)))}`);
+    return lines.join("\n");
+  }
+  if (u.status === "onboarding") lines.push(`   ${t.userOnboarding(u.step ?? "—")}`);
+  if (u.place_label || u.lat !== null) lines.push(`   📍 ${escapeHtml(u.place_label ?? `${u.lat}, ${u.lon}`)}`);
+  if (u.notify_time) {
+    const preset = (Object.keys(DAY_PRESETS) as (keyof typeof DAY_PRESETS)[]).find((k) => DAY_PRESETS[k] === u.days);
+    lines.push(
+      `   ⏰ ${u.notify_time} · 🚪 ${u.leave_time ?? "—"} · 🏠 ${u.return_time ?? "—"} · 📅 ${preset ? t.days[preset] : u.days} · ${t.sens[u.sensitivity] ?? ""}`,
+    );
+  }
+  if (u.status !== "onboarding") {
+    lines.push(`   ${t.userLastReport(u.last_report_date ? shortDate(u.last_report_date) : null)} · ${u.lang === "en" ? "🇬🇧" : "🇹🇷"}`);
+  }
+  return lines.join("\n");
+}
+
+/** "2026-09-30" → "30 Eyl" */
+function shortDate(date: string): string {
+  const d = new Date(`${date}T12:00:00Z`);
+  return `${d.getUTCDate()} ${TEXTS.tr.monthsShort[d.getUTCMonth()]}`;
 }
 
 /** Gün içi uyarının şu an ne diyeceği (zamanlamayı beklemeden). */

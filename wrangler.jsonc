@@ -5,8 +5,8 @@
   "compatibility_date": "2026-09-20",
   "observability": { "enabled": true },
 
-  // Her 15 dakikada bir: zamanı gelen kullanıcılara rapor / uyarı gönderir
-  "triggers": { "crons": ["*/15 * * * *"] },
+  // Her 5 dakikada bir: zamanı gelen kullanıcılara rapor / uyarı gönderir (her tur ayrı alt-istek hakkı)
+  "triggers": { "crons": ["*/5 * * * *"] },
 
   "d1_databases": [
     {
