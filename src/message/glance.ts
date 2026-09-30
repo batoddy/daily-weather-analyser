@@ -8,6 +8,7 @@ import type { RainSpan, SevereEvent, SevereKind, Summary } from "../weather/summ
 import type { Lang } from "./i18n";
 
 interface GlanceStrings {
+  outfit: string; // başlıktaki "Kıyafet önerisi:" etiketi
   clothing(tier: Tier, longSleeves: boolean): [emoji: string, label: string];
   item: Partial<Record<Item, string>>; // başlıktaki "yanına al" etiketleri
   severe: Record<SevereKind, string>;
@@ -30,6 +31,7 @@ interface GlanceStrings {
 }
 
 const tr: GlanceStrings = {
+  outfit: "Kıyafet önerisi:",
   clothing: (tier, longSleeves) =>
     (
       [
@@ -82,6 +84,7 @@ const tr: GlanceStrings = {
 };
 
 const en: GlanceStrings = {
+  outfit: "Outfit:",
   clothing: (tier, longSleeves) =>
     (
       [
@@ -143,7 +146,10 @@ export function headline(
 ): string[] {
   const g = GLANCE[lang];
   const [emoji, label] = g.clothing(a.tier, a.longSleeves);
-  const chips = [`${emoji} <b>${label}</b>`, ...a.items.flatMap((i) => (g.item[i] ? [boldChip(g.item[i])] : []))];
+  const chips = [
+    `${emoji} ${g.outfit} <b>${label}</b>`,
+    ...a.items.flatMap((i) => (g.item[i] ? [boldChip(g.item[i])] : [])),
+  ];
   return [...severeLines(lang, severe), chips.join("  ·  ")];
 }
 

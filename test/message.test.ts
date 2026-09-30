@@ -48,7 +48,7 @@ describe("rapor", () => {
   it("ilk satır (bildirim önizlemesi) ne giyileceğini ve şemsiyeyi söyler", () => {
     const inp = input();
     const firstLine = composeReport(inp, templateComment(inp)).split("\n")[0];
-    expect(firstLine).toBe("🧥 <b>MONT</b>  ·  ☔ <b>ŞEMSİYE</b>");
+    expect(firstLine).toBe("🧥 Kıyafet önerisi: <b>MONT</b>  ·  ☔ <b>ŞEMSİYE</b>");
   });
 
   it("tek bakışta: sıcaklık seyri, dünle fark, yağmur, rüzgar; detaylar açılır blokta", () => {
@@ -132,7 +132,7 @@ describe("gün içi uyarı", () => {
     expect(composeAlert({ ...base, gustMax: 57 })).toBeNull();
     const text = composeAlert({ ...base, gustMax: 66 })!;
     expect(text.split("\n")[0]).toBe("💨 <b>Çok sert rüzgar</b> (18:00 civarı): yürümek zorlaşır, şemsiye işe yaramaz");
-    expect(text).toContain("ani hamleler 66 km/s"); // sayı sadece detayda
+    expect(text).toContain("esintiler 66 km/s"); // sayı sadece detayda
   });
 
   it("şiddetli yağmur + fırtına", () => {
@@ -148,7 +148,7 @@ describe("gün içi uyarı", () => {
     expect(text.split("\n")[0]).toBe("⚠️ <b>FIRTINA 18:00–19:00</b>");
     expect(text.split("\n")[1]).toBe("☔ <b>17:00–19:00 ŞİDDETLİ YAĞMUR</b>");
     expect(text).toContain("⚠️ ☔ 17:00–19:00 şiddetli yağmur (%90, 12,4 mm)");
-    expect(text).toContain("fırtına, tabela ve kiremit uçabilir (ani rüzgar 80 km/s)");
+    expect(text).toContain("fırtına, tabela ve kiremit uçabilir (esintiler 80 km/s)");
     expect(text).toContain("yağmurluk");
     console.log(`\n${text}\n`);
   });
