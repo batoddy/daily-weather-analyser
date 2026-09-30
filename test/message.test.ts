@@ -69,6 +69,28 @@ describe("rapor", () => {
     expect(lines[1]).toContain("MONT");
   });
 
+  it("şehir geneli: kişisel konumlarda olmayan yoğun yağış ufak notla söylenir", () => {
+    const inp = { ...input(), city: { name: "İstanbul", events: [{ kind: "heavy_rain" as const, from: "15:00", to: "17:00" }] } };
+    expect(composeReport(inp, templateComment(inp))).toContain(
+      "🏙️ <i>İstanbul çevresinde yer yer 15:00–17:00 şiddetli yağmur</i>",
+    );
+  });
+
+  it("şehir geneli: kişinin kendi konumunda zaten varsa tekrar edilmez", () => {
+    const base = input();
+    const inp = {
+      ...base,
+      summary: { ...base.summary, severe: [{ kind: "thunderstorm" as const, from: "16:00", to: "17:00", value: 50 }] },
+      city: { name: "İstanbul", events: [{ kind: "thunderstorm" as const, from: "16:00", to: "18:00" }] },
+    };
+    expect(composeReport(inp, templateComment(inp))).not.toContain("🏙️");
+  });
+
+  it("detaylarda ev ve iş", () => {
+    const inp = { ...input(), work: "Maslak, İstanbul" };
+    expect(composeReport(inp, templateComment(inp))).toContain("🏠 Kadıköy, İstanbul · 🏢 Maslak, İstanbul");
+  });
+
   it("şablon yorum kendi doğrulamasından geçer (tr + en)", () => {
     for (const lang of ["tr", "en"] as const) {
       const inp = input(lang);
@@ -105,6 +127,14 @@ describe("gün içi uyarı", () => {
     expect(composeAlert({ lang: "tr", place: null, rain: [], windMax: 10, gustMax: 20, gustTime: "15:00", severe: [] })).toBeNull();
   });
 
+  it("sert rüzgar (50-62) tek başına uyarı sebebi değil; çok sert (62+) anlaşılır dille uyarılır", () => {
+    const base = { lang: "tr" as const, place: null, rain: [], windMax: 25, gustTime: "18:00", severe: [] };
+    expect(composeAlert({ ...base, gustMax: 57 })).toBeNull();
+    const text = composeAlert({ ...base, gustMax: 66 })!;
+    expect(text.split("\n")[0]).toBe("💨 <b>Çok sert rüzgar</b> (18:00 civarı): yürümek zorlaşır, şemsiye işe yaramaz");
+    expect(text).toContain("ani hamleler 66 km/s"); // sayı sadece detayda
+  });
+
   it("şiddetli yağmur + fırtına", () => {
     const text = composeAlert({
       lang: "tr",
@@ -118,7 +148,7 @@ describe("gün içi uyarı", () => {
     expect(text.split("\n")[0]).toBe("⚠️ <b>FIRTINA 18:00–19:00</b>");
     expect(text.split("\n")[1]).toBe("☔ <b>17:00–19:00 ŞİDDETLİ YAĞMUR</b>");
     expect(text).toContain("⚠️ ☔ 17:00–19:00 şiddetli yağmur (%90, 12,4 mm)");
-    expect(text).toContain("fırtına, hamleler 80 km/s");
+    expect(text).toContain("fırtına, tabela ve kiremit uçabilir (ani rüzgar 80 km/s)");
     expect(text).toContain("yağmurluk");
     console.log(`\n${text}\n`);
   });

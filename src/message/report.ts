@@ -14,12 +14,15 @@ import type { Advice } from "../advice/advice";
 import { T } from "../advice/thresholds";
 import type { LocalNow } from "../time";
 import type { RainSpan, SevereEvent, Summary, Window } from "../weather/summarize";
-import { GLANCE, headline, rainGlance, severeLines as severeGlance, windGlance } from "./glance";
+import type { CityEvent } from "../weather/city";
+import { cityGlance, GLANCE, headline, rainGlance, severeLines as severeGlance, windGlance } from "./glance";
 import { SKY_EMOJI, STRINGS, type Lang } from "./i18n";
 
 export interface ReportInput {
   name: string;
-  place: string | null;
+  place: string | null; // ev
+  work?: string | null; // iş/okul; yoksa evden çalışıyor
+  city?: { name: string | null; events: CityEvent[] }; // şehir geneli yoğun yağış vb.
   lang: Lang;
   now: LocalNow;
   window: Window;
@@ -43,7 +46,7 @@ export function composeReport(inp: ReportInput, comment: string): string {
 }
 
 /** Tek bakışta gün: sıcaklık seyri, dünle fark, yağmur, rüzgar, katman, güneş. */
-export function glanceLines({ lang, window, summary: sm, advice }: ReportInput): string[] {
+export function glanceLines({ lang, window, summary: sm, advice, city }: ReportInput): string[] {
   const g = GLANCE[lang];
   // Çıkış → (en sıcak / en soğuk, zaman sırasıyla) → dönüş; art arda aynı değerler tek yazılır
   const middle = [showPeak(sm) ? sm.peak : null, showColdest(sm) ? sm.coldest : null]
@@ -60,6 +63,8 @@ export function glanceLines({ lang, window, summary: sm, advice }: ReportInput):
   }
   lines.push(...rainGlance(lang, sm.rain));
   if (sm.maybeRain) lines.push(g.maybeRain(sm.maybeRain.time, sm.maybeRain.prob));
+  const cityLine = city ? cityGlance(lang, city.name, city.events, sm) : null;
+  if (cityLine) lines.push(cityLine);
   const wind = windGlance(lang, {
     cool: advice.reasons.includes("wind_colder"),
     windy: advice.reasons.includes("wind_colder") || advice.reasons.includes("breezy_warm"),
@@ -72,8 +77,8 @@ export function glanceLines({ lang, window, summary: sm, advice }: ReportInput):
   return lines;
 }
 
-/** "☁️ Kadıköy, İstanbul · Salı, 30 Eylül" */
-export function placeDate({ place, lang, window, summary }: ReportInput): string {
+/** "☁️ Salı, 30 Eylül" + ev / iş satırı */
+export function placeDate({ place, work, lang, window, summary }: ReportInput): string {
   const s = STRINGS[lang];
   const d = new Date(`${window.start.slice(0, 10)}T12:00:00Z`);
   const weekday = s.weekdays[(d.getUTCDay() + 6) % 7];
@@ -81,7 +86,14 @@ export function placeDate({ place, lang, window, summary }: ReportInput): string
     lang === "tr"
       ? `${weekday}, ${d.getUTCDate()} ${s.months[d.getUTCMonth()]}`
       : `${weekday}, ${s.months[d.getUTCMonth()]} ${d.getUTCDate()}`;
-  return `${SKY_EMOJI[summary.sky]} <b>${place ? `${escapeHtml(place)} · ` : ""}${date}</b>`;
+  const where = work
+    ? `
+🏠 ${escapeHtml(place ?? "—")} · 🏢 ${escapeHtml(work)}`
+    : place
+      ? `
+🏠 ${escapeHtml(place)}`
+      : "";
+  return `${SKY_EMOJI[summary.sky]} <b>${date}</b>${where}`;
 }
 
 const MIN_POINT_DIFF = 2;
@@ -126,7 +138,7 @@ export function factsBlock({ lang, window, summary: sm, advice }: ReportInput): 
   if (sm.yesterdayDiff !== null) lines.push(s.vsYesterday(sm.yesterdayDiff, !!window.tomorrow));
 
   const windy = advice.reasons.includes("wind_colder") || advice.reasons.includes("breezy_warm");
-  if (windy || sm.gustMax >= T.alertGust) lines.push(s.wind(sm.windMax, sm.gustMax, sm.gustTime));
+  if (windy || sm.gustMax >= T.gustNoUmbrella) lines.push(s.wind(sm.windMax, sm.gustMax, sm.gustTime));
 
   lines.push(...rainLines(sm.rain, lang));
   if (sm.maybeRain) lines.push(s.maybeRain(sm.maybeRain.time, sm.maybeRain.prob));
@@ -201,17 +213,21 @@ export interface AlertInput {
 /** Uyarılacak bir şey yoksa null. */
 export function composeAlert(a: AlertInput): string | null {
   const s = STRINGS[a.lang];
-  const windy = a.gustMax >= T.alertGust || a.windMax >= T.alertWind;
+  const windy = a.gustMax >= T.alertGust; // çok sert rüzgar (yılda ~12 gün); fırtına zaten severe'da
   if (a.rain.length === 0 && !windy && a.severe.length === 0) return null;
 
   // İlk satır bildirimde görünür: en önemli olay en üstte
   const lines = [...severeGlance(a.lang, a.severe), ...rainGlance(a.lang, a.rain)];
-  if (windy) lines.push(`💨 <b>${s.wind(a.windMax, a.gustMax, a.gustTime).replace(/^💨 /, "")}</b>`);
+  const windLine = windy ? windGlance(a.lang, { cool: false, windy: true, gustMax: a.gustMax, gustTime: a.gustTime }) : null;
+  if (windLine) lines.push(windLine);
   lines.push("");
   if (a.rain.length > 0) lines.push(a.gustMax >= T.gustNoUmbrella ? s.alertRaincoat : s.alertUmbrella);
   if (a.severe.length > 0 || windy) lines.push(s.alertCareful);
 
-  const details = [...rainLines(a.rain, a.lang), ...a.severe.map((e) => `⚠️ ${e.from}–${e.to} ${s.severe(e.kind, e.value)}`)];
+  const details = [
+    ...rainLines(a.rain, a.lang),
+    ...(windy ? [s.wind(a.windMax, a.gustMax, a.gustTime)] : []),
+    ...a.severe.map((e) => `⚠️ ${e.from}–${e.to} ${s.severe(e.kind, e.value)}`)];
   const footer = `<i>${GLANCE[a.lang].alertFooter}${a.place ? ` · ${escapeHtml(a.place)}` : ""}</i>`;
   if (details.length > 0) lines.push("", `<blockquote expandable>${details.join("\n")}\n${footer}</blockquote>`);
   else lines.push("", footer);

@@ -29,17 +29,33 @@ type HourlyResponse = {
   hourly: { time: string[] } & Record<(typeof HOURLY)[number], (number | null)[]>;
 };
 
-/** Dün + bugün + 2 gün sonrası saatlik veri (kullanıcının yerel saatiyle). */
-export async function fetchHours(lat: number, lon: number, timezone: string): Promise<Hour[]> {
+export interface Point {
+  lat: number;
+  lon: number;
+}
+
+/**
+ * Birden fazla konum için dün + bugün + 2 gün sonrası saatlik veri (hepsi aynı yerel saatle).
+ * Tek istek: ev, iş ve şehir ızgarası aynı çağrıda gelir (alt-istek sınırı için önemli).
+ */
+export async function fetchHoursMulti(points: Point[], timezone: string): Promise<Hour[][]> {
   const params = new URLSearchParams({
-    latitude: String(lat),
-    longitude: String(lon),
+    latitude: points.map((p) => p.lat).join(","),
+    longitude: points.map((p) => p.lon).join(","),
     hourly: HOURLY.join(","),
     timezone,
     past_days: "1",
     forecast_days: "3",
   });
-  const data = await getJson<HourlyResponse>(`${FORECAST_URL}?${params}`);
+  const data = await getJson<HourlyResponse | HourlyResponse[]>(`${FORECAST_URL}?${params}`);
+  return (Array.isArray(data) ? data : [data]).map(toHours);
+}
+
+export async function fetchHours(lat: number, lon: number, timezone: string): Promise<Hour[]> {
+  return (await fetchHoursMulti([{ lat, lon }], timezone))[0]!;
+}
+
+function toHours(data: HourlyResponse): Hour[] {
   const h = data.hourly;
   return h.time.map((time, i) => ({
     time,

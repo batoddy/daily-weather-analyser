@@ -67,7 +67,7 @@ const tr: Strings = {
     if (d === 0 || Math.abs(d) < 3) return `📊 ${tomorrow ? "Bugünle" : "Dünle"} benzer sıcaklıkta`;
     return `📊 ${ref} ${Math.abs(d)}° daha ${d < 0 ? "soğuk" : "sıcak"}`;
   },
-  wind: (mean, gust, time) => `💨 Rüzgar ${mean} km/s, hamleler ${gust} km/s'ye kadar (${time} civarı)`,
+  wind: (mean, gust, time) => `💨 Rüzgar ${mean} km/s, ani hamleler ${gust} km/s'ye kadar (${time} civarı)`,
   rain: (from, to, prob, mm, heavy, snow) =>
     `${heavy ? "⚠️ " : ""}${snow ? "🌨️" : "☔"} ${from}–${to} ${heavy ? "şiddetli " : ""}${snow ? "kar" : "yağmur"} (%${prob}, ${mm} mm)`,
   maybeRain: (time, prob) => `🌦️ ${time} civarı %${prob} ihtimalle yağmur`,
@@ -78,7 +78,7 @@ const tr: Strings = {
       hail: "dolu",
       heavy_snow: "yoğun kar",
       freezing_rain: "dondurucu yağmur, buzlanma",
-      storm_wind: `fırtına, hamleler ${v} km/s`,
+      storm_wind: v >= 89 ? `şiddetli fırtına, ağaç devrilebilir (ani rüzgar ${v} km/s)` : `fırtına, tabela ve kiremit uçabilir (ani rüzgar ${v} km/s)`,
       extreme_heat: `aşırı sıcak, hissedilen ${v}°`,
       extreme_cold: `aşırı soğuk, hissedilen ${v}°`,
     })[kind],
@@ -196,7 +196,7 @@ const en: Strings = {
       hail: "hail",
       heavy_snow: "heavy snow",
       freezing_rain: "freezing rain, icy roads",
-      storm_wind: `storm, gusts ${v} km/h`,
+      storm_wind: v >= 89 ? `violent storm, trees may fall (gusts ${v} km/h)` : `storm, signs and roof tiles may fly (gusts ${v} km/h)`,
       extreme_heat: `extreme heat, feels like ${v}°`,
       extreme_cold: `extreme cold, feels like ${v}°`,
     })[kind],

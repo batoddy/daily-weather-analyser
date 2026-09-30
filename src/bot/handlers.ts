@@ -10,12 +10,12 @@ import { reverseLabel, searchPlaces, type Place } from "../weather/geocode";
 import { lookupTimezone } from "../weather/openmeteo";
 import { DAY_PRESETS, TEXTS } from "./texts";
 
-const ONBOARDING: Step[] = ["lang", "location", "notify", "leave", "return", "sens", "days"];
+const ONBOARDING: Step[] = ["lang", "location", "work", "notify", "leave", "return", "sens", "days"];
 
-const TIME_OPTIONS: Record<"notify" | "leave" | "return", string[]> = {
-  notify: ["06:00", "06:30", "07:00", "07:30", "08:00", "08:30", "09:00", "09:30"],
-  leave: ["07:00", "07:30", "08:00", "08:30", "09:00", "09:30", "10:00", "10:30"],
-  return: ["16:00", "17:00", "18:00", "19:00", "20:00", "21:00", "22:00", "23:00"],
+const TIME_OPTIONS: Record<"notify" | "leave" | "return", { times: string[]; perRow: number }> = {
+  notify: { times: ["05:30", "06:00", "06:30", "07:00", "07:30", "08:00", "08:30", "09:00", "09:30"], perRow: 3 },
+  leave: { times: ["06:00", "06:30", "07:00", "07:30", "08:00", "08:30", "09:00", "09:30", "10:00"], perRow: 3 },
+  return: { times: ["16:00", "17:00", "18:00", "19:00", "20:00", "21:00", "22:00", "23:00"], perRow: 4 },
 };
 
 const COMMAND_ALIASES: Record<string, string> = {
@@ -78,6 +78,8 @@ async function handleMessage(ctx: Ctx, msg: TgMessage): Promise<void> {
 
   switch (user.step) {
     case "location":
+    case "work":
+      // Konum butonu sunmuyoruz (o an evde olmayabilir); ama kişi kendisi konum gönderirse kabul et
       if (msg.location) return pickLocation(ctx, user, { lat: msg.location.latitude, lon: msg.location.longitude });
       if (msg.text) return searchLocation(ctx, user, msg.text);
       break;
@@ -217,12 +219,19 @@ async function handleCallback(ctx: Ctx, queryId: string, fromId: number, data: s
       return advance(ctx, { ...user, lang: asLang(value) });
 
     case "place": {
-      if (user.step !== "location" || !user.pending_places) break;
+      if ((user.step !== "location" && user.step !== "work") || !user.pending_places) break;
       const place = (JSON.parse(user.pending_places) as Place[])[Number(value)];
       if (!place) break;
       await clearButtons();
       return pickLocation(ctx, user, place);
     }
+
+    case "work":
+      if (user.step !== "work" || value !== "none") break;
+      await clearButtons();
+      await updateUser(env.DB, chatId, { work_lat: null, work_lon: null, work_label: null, pending_places: null });
+      await tg.send(chatId, t.workNone);
+      return advance(ctx, { ...user, work_lat: null, work_lon: null, work_label: null });
 
     case "time":
       if (user.step !== "notify" && user.step !== "leave" && user.step !== "return") break;
@@ -279,17 +288,18 @@ async function ask(ctx: Ctx, user: User, step: Step): Promise<void> {
         inline_keyboard: [[btn("🇹🇷 Türkçe", "lang:tr"), btn("🇬🇧 English", "lang:en")]],
       }));
     case "location":
-      return void (await tg.send(chatId, t.askLocation, {
-        keyboard: [[{ text: t.shareLocationButton, request_location: true }]],
-        resize_keyboard: true,
-        one_time_keyboard: true,
-      }));
+      return void (await tg.send(chatId, t.askHome));
+    case "work":
+      return void (await tg.send(chatId, t.askWork, { inline_keyboard: [[btn(t.btn.workNone, "work:none")]] }));
     case "notify":
     case "leave":
     case "return": {
       const prompt = { notify: t.askNotify, leave: t.askLeave, return: t.askReturn }[step];
-      const buttons = TIME_OPTIONS[step].map((time) => btn(time, `time:${time}`));
-      return void (await tg.send(chatId, prompt, { inline_keyboard: [buttons.slice(0, 4), buttons.slice(4)] }));
+      const { times, perRow } = TIME_OPTIONS[step];
+      const buttons = times.map((time) => btn(time, `time:${time}`));
+      const rows: InlineButton[][] = [];
+      for (let i = 0; i < buttons.length; i += perRow) rows.push(buttons.slice(i, i + perRow));
+      return void (await tg.send(chatId, prompt, { inline_keyboard: rows }));
     }
     case "sens":
       return void (await tg.send(chatId, t.askSens, {
@@ -352,6 +362,16 @@ async function pickLocation(ctx: Ctx, user: User, place: { lat: number; lon: num
   // ~1 km hassasiyet
   const lat = Math.round(place.lat * 100) / 100;
   const lon = Math.round(place.lon * 100) / 100;
+
+  if (user.step === "work") {
+    // Saat dilimi evden gelir; iş için sadece konum ve etiket
+    const label = place.label ?? (await reverseLabel(place.lat, place.lon, user.lang));
+    const patch = { work_lat: lat, work_lon: lon, work_label: label, pending_places: null };
+    await updateUser(ctx.env.DB, ctx.chatId, patch);
+    await ctx.tg.send(ctx.chatId, t.workSaved(escapeHtml(label ?? `${lat}, ${lon}`)));
+    return advance(ctx, { ...user, ...patch });
+  }
+
   let timezone: string;
   try {
     timezone = await lookupTimezone(lat, lon);
@@ -362,7 +382,7 @@ async function pickLocation(ctx: Ctx, user: User, place: { lat: number; lon: num
   const label = place.label ?? (await reverseLabel(place.lat, place.lon, user.lang));
   const patch = { lat, lon, timezone, place_label: label, pending_places: null };
   await updateUser(ctx.env.DB, ctx.chatId, patch);
-  await ctx.tg.send(ctx.chatId, t.placeSaved(escapeHtml(label ?? `${lat}, ${lon}`)), { remove_keyboard: true });
+  await ctx.tg.send(ctx.chatId, t.placeSaved(escapeHtml(label ?? `${lat}, ${lon}`)));
   return advance(ctx, { ...user, ...patch });
 }
 
@@ -438,7 +458,8 @@ function userBlock(u: User, isAdmin: boolean): string {
     return lines.join("\n");
   }
   if (u.status === "onboarding") lines.push(`   ${t.userOnboarding(u.step ?? "—")}`);
-  if (u.place_label || u.lat !== null) lines.push(`   📍 ${escapeHtml(u.place_label ?? `${u.lat}, ${u.lon}`)}`);
+  if (u.place_label || u.lat !== null) lines.push(`   🏠 ${escapeHtml(u.place_label ?? `${u.lat}, ${u.lon}`)}`);
+  if (u.work_label || u.work_lat !== null) lines.push(`   🏢 ${escapeHtml(u.work_label ?? `${u.work_lat}, ${u.work_lon}`)}`);
   if (u.notify_time) {
     const preset = (Object.keys(DAY_PRESETS) as (keyof typeof DAY_PRESETS)[]).find((k) => DAY_PRESETS[k] === u.days);
     lines.push(
@@ -481,6 +502,7 @@ function settingsView(user: User): [string, { inline_keyboard: InlineButton[][] 
     t.settingsTitle,
     t.settingsLines({
       place: escapeHtml(user.place_label ?? (user.lat !== null ? `${user.lat}, ${user.lon}` : "—")),
+      work: user.work_label ? escapeHtml(user.work_label) : user.work_lat !== null ? `${user.work_lat}, ${user.work_lon}` : null,
       notify: user.notify_time ?? "—",
       leave: user.leave_time ?? "—",
       ret: user.return_time ?? "—",
@@ -490,7 +512,7 @@ function settingsView(user: User): [string, { inline_keyboard: InlineButton[][] 
     }),
   ].join("\n\n");
   const keyboard = [
-    [btn(t.btn.location, "edit:location"), btn(t.btn.lang, "edit:lang")],
+    [btn(t.btn.location, "edit:location"), btn(t.btn.work, "edit:work"), btn(t.btn.lang, "edit:lang")],
     [btn(t.btn.notify, "edit:notify"), btn(t.btn.leave, "edit:leave"), btn(t.btn.ret, "edit:return")],
     [btn(t.btn.sens, "edit:sens"), btn(t.btn.days, "edit:days")],
     [user.status === "active" ? btn(t.btn.pause, "pause:") : btn(t.btn.resume, "resume:")],

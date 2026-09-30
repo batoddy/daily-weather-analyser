@@ -9,14 +9,17 @@ const tr = {
   pendingWait: "İsteğin hâlâ onay bekliyor ⏳",
   rejected: "Üzgünüm, isteğin onaylanmadı. / Sorry, your request was not approved.",
   askLang: "🌐 Dil seç / Choose language",
-  askLocation:
-    "📍 Konumunu paylaş (aşağıdaki buton, telefondan) ya da semt/şehir adını yaz.\n<i>Konum yaklaşık 1 km hassasiyetle saklanır.</i>",
-  shareLocationButton: "📍 Konumumu paylaş",
+  askHome:
+    '🏠 Evin hangi semtte?\nSemt ya da mahalle adını yaz (ör. "Kadıköy, İstanbul"). Açık adres gerekmez.\n<i>Konum yaklaşık 1 km hassasiyetle saklanır.</i>',
+  askWork:
+    "🏢 İşin ya da okulun hangi semtte?\nGün içindeki havayı oraya göre hesaplarım. Semt adını yaz ya da evden çalışıyorsan aşağıdaki butona bas.",
+  workSaved: (label: string) => `🏢 İş: <b>${label}</b>`,
+  workNone: "🏠 Tamam, gün içi havayı da ev konumuna göre hesaplayacağım.",
   placeNotFound: 'Bulamadım 🤔 Başka türlü yazmayı dene (ör. "Kadıköy, İstanbul").',
   placeChoose: "Hangisi?",
-  placeSaved: (label: string) => `📍 Konum: <b>${label}</b>`,
+  placeSaved: (label: string) => `🏠 Ev: <b>${label}</b>`,
   placeError: "Konumu şu an işleyemedim, biraz sonra tekrar dene.",
-  askNotify: "⏰ Sabah mesajı kaçta gelsin?\n<i>Butonlardan seç ya da yaz (ör. 07:45).</i>",
+  askNotify: "⏰ Sabah kaçta kalkıyorsun? Mesajı o saatte atayım.\n<i>Butonlardan seç ya da yaz (ör. 06:45).</i>",
   askLeave: "🚪 Kaçta evden çıkıyorsun?\n<i>Butonlardan seç ya da yaz (ör. 08:15).</i>",
   askReturn: "🏠 Kaçta eve dönüyorsun?\n<i>Butonlardan seç ya da yaz (ör. 18:30).</i>",
   badTime: "Saati anlayamadım, 07:45 gibi yaz.",
@@ -27,11 +30,12 @@ const tr = {
   daysCustom: (d: string) => d,
   useButtons: "Lütfen butonlardan birini seç 👆",
   done: (notify: string) =>
-    `✅ Hazırsın! Her gün <b>${notify}</b>'de mesaj atacağım. Dönüşünden önce yağmur, sert rüzgar ya da aşırı hava olayı varsa ayrıca uyarırım.\n\nİlk raporun 👇`,
+    `✅ Hazırsın! Her gün <b>${notify}</b>'de mesaj atacağım. Eve dönmeden önce yağmur, çok sert rüzgar ya da aşırı hava olayı varsa ayrıca uyarırım.\n\nİlk raporun 👇`,
   settingsTitle: "⚙️ <b>Ayarların</b>",
   settingsLines: (s: SettingsView) =>
     [
-      `📍 Konum: ${s.place}`,
+      `🏠 Ev: ${s.place}`,
+      `🏢 İş: ${s.work ?? "— (evden çalışıyor)"}`,
       `⏰ Mesaj: ${s.notify}`,
       `🚪 Çıkış: ${s.leave} · 🏠 Dönüş: ${s.ret}`,
       `🥶 Soğuğa karşı: ${s.sens}`,
@@ -40,7 +44,9 @@ const tr = {
       `Durum: ${s.active ? "✅ Aktif" : "⏸ Durduruldu"}`,
     ].join("\n"),
   btn: {
-    location: "📍 Konum",
+    location: "🏠 Ev",
+    work: "🏢 İş",
+    workNone: "🏠 Evden çalışıyorum / yok",
     lang: "🌐 Dil",
     notify: "⏰ Mesaj saati",
     leave: "🚪 Çıkış",
@@ -85,7 +91,7 @@ const tr = {
   userPending: (since: string) => `Onay bekliyor (${since}'den beri)`,
   userOnboarding: (step: string) =>
     `Kurulumda, şu adımda: ${
-      ({ lang: "dil", location: "konum", notify: "mesaj saati", leave: "çıkış saati", return: "dönüş saati", sens: "hassasiyet", days: "günler" } as Record<string, string>)[step] ?? step
+      ({ lang: "dil", location: "ev konumu", work: "iş konumu", notify: "mesaj saati", leave: "çıkış saati", return: "dönüş saati", sens: "hassasiyet", days: "günler" } as Record<string, string>)[step] ?? step
     }`,
   userLastReport: (date: string | null) => (date ? `📨 Son rapor: ${date}` : "📨 Henüz rapor gitmedi"),
   monthsShort: ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"],
@@ -93,6 +99,7 @@ const tr = {
 
 export interface SettingsView {
   place: string;
+  work: string | null;
   notify: string;
   leave: string;
   ret: string;
@@ -108,14 +115,17 @@ const en: Texts = {
   pendingWait: "Your request is still waiting for approval ⏳",
   rejected: tr.rejected,
   askLang: tr.askLang,
-  askLocation:
-    "📍 Share your location (button below, from your phone) or type your neighbourhood/city.\n<i>Location is stored with ~1 km precision.</i>",
-  shareLocationButton: "📍 Share my location",
+  askHome:
+    '🏠 Which neighbourhood do you live in?\nType the neighbourhood or city (e.g. "Kreuzberg, Berlin"). No street address needed.\n<i>Location is stored with ~1 km precision.</i>',
+  askWork:
+    "🏢 Where is your work or school?\nI'll use it for the weather during the day. Type the neighbourhood, or tap the button if you work from home.",
+  workSaved: (label) => `🏢 Work: <b>${label}</b>`,
+  workNone: "🏠 OK, I'll use your home location for the whole day.",
   placeNotFound: 'Couldn\'t find it 🤔 Try another way (e.g. "Kreuzberg, Berlin").',
   placeChoose: "Which one?",
-  placeSaved: (label) => `📍 Location: <b>${label}</b>`,
+  placeSaved: (label) => `🏠 Home: <b>${label}</b>`,
   placeError: "Couldn't process the location right now, please try again later.",
-  askNotify: "⏰ When should the morning message arrive?\n<i>Pick a button or type it (e.g. 07:45).</i>",
+  askNotify: "⏰ What time do you wake up? I'll message you then.\n<i>Pick a button or type it (e.g. 06:45).</i>",
   askLeave: "🚪 When do you leave home?\n<i>Pick a button or type it (e.g. 08:15).</i>",
   askReturn: "🏠 When do you get back home?\n<i>Pick a button or type it (e.g. 18:30).</i>",
   badTime: "I couldn't read that time, type it like 07:45.",
@@ -126,11 +136,12 @@ const en: Texts = {
   daysCustom: (d) => d,
   useButtons: "Please pick one of the buttons 👆",
   done: (notify) =>
-    `✅ All set! I'll message you every day at <b>${notify}</b>. If rain, strong wind or severe weather is coming before you get home, I'll warn you separately.\n\nYour first report 👇`,
+    `✅ All set! I'll message you every day at <b>${notify}</b>. If rain, very strong wind or severe weather is coming before you get home, I'll warn you separately.\n\nYour first report 👇`,
   settingsTitle: "⚙️ <b>Your settings</b>",
   settingsLines: (s) =>
     [
-      `📍 Location: ${s.place}`,
+      `🏠 Home: ${s.place}`,
+      `🏢 Work: ${s.work ?? "— (works from home)"}`,
       `⏰ Message: ${s.notify}`,
       `🚪 Leave: ${s.leave} · 🏠 Back: ${s.ret}`,
       `🥶 Cold tolerance: ${s.sens}`,
@@ -139,7 +150,9 @@ const en: Texts = {
       `Status: ${s.active ? "✅ Active" : "⏸ Paused"}`,
     ].join("\n"),
   btn: {
-    location: "📍 Location",
+    location: "🏠 Home",
+    work: "🏢 Work",
+    workNone: "🏠 I work from home / none",
     lang: "🌐 Language",
     notify: "⏰ Message time",
     leave: "🚪 Leave",

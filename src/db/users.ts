@@ -1,7 +1,7 @@
 // D1 "users" tablosu erişimi.
 
 export type Status = "pending" | "onboarding" | "active" | "paused";
-export type Step = "lang" | "location" | "notify" | "leave" | "return" | "sens" | "days";
+export type Step = "lang" | "location" | "work" | "notify" | "leave" | "return" | "sens" | "days";
 
 export interface User {
   chat_id: number;
@@ -10,7 +10,10 @@ export interface User {
   lat: number | null;
   lon: number | null;
   timezone: string | null;
-  place_label: string | null;
+  place_label: string | null; // ev (lat/lon/place_label ev konumudur)
+  work_lat: number | null; // iş/okul; boşsa evden çalışıyor
+  work_lon: number | null;
+  work_label: string | null;
   notify_time: string | null;
   leave_time: string | null;
   return_time: string | null;
@@ -52,6 +55,9 @@ const UPDATABLE = new Set<keyof User>([
   "lon",
   "timezone",
   "place_label",
+  "work_lat",
+  "work_lon",
+  "work_label",
   "notify_time",
   "leave_time",
   "return_time",

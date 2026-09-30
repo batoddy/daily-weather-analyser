@@ -3,7 +3,8 @@
 
 import type { Item, Tier } from "../advice/advice";
 import { T } from "../advice/thresholds";
-import type { RainSpan, SevereEvent, SevereKind } from "../weather/summarize";
+import type { CityEvent, CityKind } from "../weather/city";
+import type { RainSpan, SevereEvent, SevereKind, Summary } from "../weather/summarize";
 import type { Lang } from "./i18n";
 
 interface GlanceStrings {
@@ -14,7 +15,8 @@ interface GlanceStrings {
   diff(d: number, tomorrow: boolean): string;
   rain(heavy: boolean, snow: boolean): string;
   maybeRain(time: string, prob: number): string;
-  strongWind(gust: number, time: string): string;
+  strongWind(time: string): string; // hamle 50-62: sert
+  veryStrongWind(time: string): string; // hamle 62-75: çok sert (gün içi uyarı eşiği)
   windyCool: string;
   breezy: string;
   layers(swing: number): string;
@@ -23,6 +25,8 @@ interface GlanceStrings {
   tomorrow: string;
   details: string;
   alertFooter: string;
+  city(name: string | null, events: string): string;
+  cityKind: Record<CityKind, string>;
 }
 
 const tr: GlanceStrings = {
@@ -57,7 +61,8 @@ const tr: GlanceStrings = {
   diff: (d, tomorrow) => `${d < 0 ? "📉" : "📈"} ${tomorrow ? "Bugünden" : "Dünden"} <b>${Math.abs(d)}° daha ${d < 0 ? "soğuk" : "sıcak"}</b>`,
   rain: (heavy, snow) => (snow ? (heavy ? "YOĞUN KAR" : "kar") : heavy ? "ŞİDDETLİ YAĞMUR" : "yağmur"),
   maybeRain: (time, prob) => `🌦️ ${time} civarı belki yağmur (%${prob})`,
-  strongWind: (gust, time) => `💨 <b>Sert rüzgar</b>, ${time} civarı hamleler ${gust} km/s`,
+  strongWind: (time) => `💨 Sert rüzgar (${time} civarı): şemsiye ters dönebilir`,
+  veryStrongWind: (time) => `💨 <b>Çok sert rüzgar</b> (${time} civarı): yürümek zorlaşır, şemsiye işe yaramaz`,
   windyCool: "💨 Rüzgarlı, olduğundan soğuk hissettirir",
   breezy: "💨 Esintili",
   layers: (swing) => `🧅 Katmanlı giyin, gün içinde ${swing}° fark var`,
@@ -66,6 +71,14 @@ const tr: GlanceStrings = {
   tomorrow: "🌙 <i>Yarın için</i>",
   details: "Detaylar",
   alertFooter: "Dönüşten önce hatırlatma",
+  city: (name, events) => `🏙️ <i>${name ? `${name} çevresinde` : "Şehrin bazı yerlerinde"} yer yer ${events}</i>`,
+  cityKind: {
+    heavy_rain: "şiddetli yağmur",
+    thunderstorm: "gök gürültülü sağanak",
+    hail: "dolu",
+    heavy_snow: "yoğun kar",
+    freezing_rain: "buzlanma",
+  },
 };
 
 const en: GlanceStrings = {
@@ -100,7 +113,8 @@ const en: GlanceStrings = {
   diff: (d, tomorrow) => `${d < 0 ? "📉" : "📈"} <b>${Math.abs(d)}° ${d < 0 ? "colder" : "warmer"}</b> than ${tomorrow ? "today" : "yesterday"}`,
   rain: (heavy, snow) => (snow ? (heavy ? "HEAVY SNOW" : "snow") : heavy ? "HEAVY RAIN" : "rain"),
   maybeRain: (time, prob) => `🌦️ Maybe rain around ${time} (${prob}%)`,
-  strongWind: (gust, time) => `💨 <b>Strong wind</b>, gusts ${gust} km/h around ${time}`,
+  strongWind: (time) => `💨 Strong wind (around ${time}): umbrellas may flip`,
+  veryStrongWind: (time) => `💨 <b>Very strong wind</b> (around ${time}): hard to walk, umbrella useless`,
   windyCool: "💨 Windy, feels colder than it is",
   breezy: "💨 Breezy",
   layers: (swing) => `🧅 Dress in layers, ${swing}° swing during the day`,
@@ -109,6 +123,14 @@ const en: GlanceStrings = {
   tomorrow: "🌙 <i>For tomorrow</i>",
   details: "Details",
   alertFooter: "Heads-up before you head home",
+  city: (name, events) => `🏙️ <i>${name ? `Around ${name}` : "Elsewhere in the city"}, locally: ${events}</i>`,
+  cityKind: {
+    heavy_rain: "heavy rain",
+    thunderstorm: "thunderstorms",
+    hail: "hail",
+    heavy_snow: "heavy snow",
+    freezing_rain: "icy roads",
+  },
 };
 
 export const GLANCE: Record<Lang, GlanceStrings> = { tr, en };
@@ -137,9 +159,21 @@ export function rainGlance(lang: Lang, rain: RainSpan[]): string[] {
 
 export function windGlance(lang: Lang, w: { cool: boolean; windy: boolean; gustMax: number; gustTime: string }): string | null {
   const g = GLANCE[lang];
-  if (w.gustMax >= T.gustNoUmbrella) return g.strongWind(w.gustMax, w.gustTime);
+  if (w.gustMax >= T.stormGust) return null; // "FIRTINA" aşırı olay olarak zaten en üstte
+  if (w.gustMax >= T.alertGust) return g.veryStrongWind(w.gustTime);
+  if (w.gustMax >= T.gustNoUmbrella) return g.strongWind(w.gustTime);
   if (!w.windy) return null;
   return w.cool ? g.windyCool : g.breezy;
+}
+
+/** Şehir geneli notu; kişinin kendi konumlarında zaten söylenen olaylar tekrar edilmez. */
+export function cityGlance(lang: Lang, cityName: string | null, events: CityEvent[], sm: Summary): string | null {
+  const g = GLANCE[lang];
+  const personal = new Set<string>(sm.severe.map((e) => e.kind));
+  if (sm.rain.some((r) => r.heavy)) personal.add("heavy_rain");
+  const fresh = events.filter((e) => !personal.has(e.kind));
+  if (fresh.length === 0) return null;
+  return g.city(cityName, fresh.map((e) => `${e.from}–${e.to} ${g.cityKind[e.kind]}`).join(", "));
 }
 
 // "🌂 küçük şemsiye" gibi zayıf öneriler kalın yazılmaz

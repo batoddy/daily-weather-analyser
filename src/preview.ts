@@ -1,19 +1,16 @@
 // Lokal önizleme: tarayıcıda raporu, Gemini yorumunu, doğrulamayı ve gün içi uyarıyı gösterir.
 // Sadece localhost'tan erişilebilir (index.ts kontrol eder).
-//   /preview?yer=Kadıköy&cikis=08:15&donus=19:00
+//   /preview?ev=Kadıköy&is=Levent&cikis=08:15&donus=19:00
 //   /preview?lat=56.95&lon=24.11&dil=en&hassasiyet=1&saat=07:30
 
-import { advise } from "./advice/advice";
 import type { ReadyUser } from "./db/users";
 import { asLang } from "./message/i18n";
 import { comment } from "./message/llm";
-import { composeReport, escapeHtml, type ReportInput } from "./message/report";
-import { reportWindow } from "./schedule";
-import { buildAlert, cachedFetcher } from "./service";
+import { composeReport, escapeHtml } from "./message/report";
+import { buildAlert, cachedFetcher, reportInput } from "./service";
 import { localNow, parseTime, toMinutes } from "./time";
 import { reverseLabel, searchPlaces } from "./weather/geocode";
 import { lookupTimezone } from "./weather/openmeteo";
-import { summarize } from "./weather/summarize";
 
 export async function preview(url: URL, env: Env): Promise<Response> {
   const q = url.searchParams;
@@ -22,11 +19,11 @@ export async function preview(url: URL, env: Env): Promise<Response> {
   const ret = parseTime(q.get("donus") ?? "") ?? "19:00";
   const sensitivity = Math.max(-1, Math.min(1, Number(q.get("hassasiyet") ?? 0) || 0));
 
-  // Konum: yer adı ya da lat/lon (varsayılan Kadıköy)
+  // Ev: yer adı ya da lat/lon (varsayılan Kadıköy); iş: isteğe bağlı yer adı
   let lat = Number(q.get("lat"));
   let lon = Number(q.get("lon"));
   let place: string | null = null;
-  const placeQuery = q.get("yer") ?? (q.has("lat") ? null : "Kadıköy, İstanbul");
+  const placeQuery = q.get("ev") ?? q.get("yer") ?? (q.has("lat") ? null : "Kadıköy, İstanbul");
   if (placeQuery) {
     const found = (await searchPlaces(placeQuery, lang))[0];
     if (!found) return page("Bulunamadı", `<p>"${escapeHtml(placeQuery)}" için sonuç yok.</p>`);
@@ -36,6 +33,14 @@ export async function preview(url: URL, env: Env): Promise<Response> {
     place = await reverseLabel(lat, lon, lang);
   }
   const timezone = await lookupTimezone(lat, lon);
+
+  let work: { lat: number; lon: number; label: string } | null = null;
+  const workQuery = q.get("is");
+  if (workQuery) {
+    const found = (await searchPlaces(workQuery, lang))[0];
+    if (!found) return page("Bulunamadı", `<p>"${escapeHtml(workQuery)}" için sonuç yok.</p>`);
+    work = found;
+  }
 
   // Saat simülasyonu: ?saat=07:30 → bugün 07:30'daymış gibi
   const now = localNow(timezone);
@@ -50,6 +55,9 @@ export async function preview(url: URL, env: Env): Promise<Response> {
     lon,
     timezone,
     place_label: place,
+    work_lat: work?.lat ?? null,
+    work_lon: work?.lon ?? null,
+    work_label: work?.label ?? null,
     notify_time: "07:00",
     leave_time: leave,
     return_time: ret,
@@ -64,10 +72,9 @@ export async function preview(url: URL, env: Env): Promise<Response> {
   };
 
   const fetch = cachedFetcher();
-  const window = reportWindow(user, now);
-  const summary = summarize(await fetch(lat, lon, timezone), window);
-  if (!summary) return page("Veri yok", "<p>Bu pencere için hava verisi yok.</p>");
-  const inp: ReportInput = { name: user.name, place, lang, now, window, summary, advice: advise(summary, sensitivity) };
+  const inp = await reportInput(user, now, fetch);
+  if (!inp) return page("Veri yok", "<p>Bu pencere için hava verisi yok.</p>");
+  const { window, summary } = inp;
   const c = await comment(env, inp);
   const report = composeReport(inp, c.text);
   const alert = await buildAlert(user, now, fetch);
@@ -91,7 +98,7 @@ export async function preview(url: URL, env: Env): Promise<Response> {
 
   return page(
     "Önizleme",
-    `<p class="meta">📍 ${escapeHtml(place ?? `${lat}, ${lon}`)} · ${lat.toFixed(2)}, ${lon.toFixed(2)} · ${timezone}
+    `<p class="meta">🏠 ${escapeHtml(place ?? `${lat}, ${lon}`)}${work ? ` · 🏢 ${escapeHtml(work.label)}` : ""} · ${timezone}
       · saat ${now.time}${simTime ? " (simüle)" : ""} · pencere ${window.start.slice(11)}–${window.end.slice(11)}${window.tomorrow ? " (yarın)" : ""}</p>
 
     <h2>Sabah mesajı</h2>
@@ -108,11 +115,12 @@ export async function preview(url: URL, env: Env): Promise<Response> {
 
     <h2>Denemek için</h2>
     <ul>
-      <li><a href="?yer=Kadıköy&cikis=08:15&donus=19:00&saat=07:30">Kadıköy, sabah 07:30'daymış gibi</a></li>
+      <li><a href="?ev=Kadıköy&cikis=08:15&donus=19:00&saat=07:30">Kadıköy, sabah 07:30'daymış gibi</a></li>
+      <li><a href="?ev=Sütlüce, Beyoğlu&is=Maslak&cikis=07:30&donus=19:00&saat=06:30">Ev Sütlüce, iş Maslak</a></li>
       <li><a href="?yer=Riga&dil=en&hassasiyet=1">Riga, İngilizce, çabuk üşüyen</a></li>
       <li><a href="?yer=Ankara&cikis=07:00&donus=23:00">Ankara, uzun gün</a></li>
     </ul>
-    <p class="meta">Parametreler: yer · lat/lon · cikis · donus · dil (tr/en) · hassasiyet (-1/0/1) · saat · isim</p>`,
+    <p class="meta">Parametreler: ev (ya da yer) · is · lat/lon · cikis · donus · dil (tr/en) · hassasiyet (-1/0/1) · saat · isim</p>`,
   );
 }
 

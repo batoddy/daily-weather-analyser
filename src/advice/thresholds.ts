@@ -18,9 +18,11 @@ export const T = {
   windMean: 20, // ortalama rüzgar bu ve üstüyse rüzgarlı
   gustCool: 40, // serin havada hamle eşiği
   gustWarm: 35, // sıcak havada esinti eşiği
-  gustNoUmbrella: 50, // bu hamlede şemsiye yerine yağmurluk
-  alertWind: 30, // gün içi uyarı: ortalama rüzgar
-  alertGust: 50, // gün içi uyarı: hamle
+  // Hamle (ani rüzgar) seviyeleri, Beaufort ölçeğine göre. Parantez içi: Beyoğlu'nda 2023-2025
+  // arasında günlük en sert hamlenin bu değeri geçtiği gün sayısı (Open-Meteo arşivi).
+  gustNoUmbrella: 50, // "sert": şemsiye ters döner (yılda ~67 gün)
+  alertGust: 62, // "çok sert": yürümek zorlaşır → gün içi uyarı (yılda ~12 gün)
+  violentGust: 89, // "şiddetli fırtına": ağaç devrilir (yılda ~0 gün)
 
   // Yağış
   rainProb: 50, // bir saatin "yağmurlu" sayılması için olasılık…
@@ -30,7 +32,7 @@ export const T = {
   heavyRainMm: 7.6, // WMO: 7.6 mm/saat üstü şiddetli yağmur
 
   // Aşırı hava olayları
-  stormGust: 75, // Beaufort 9 (kuvvetli fırtına)
+  stormGust: 75, // "fırtına": tabela/kiremit uçar → aşırı olay (yılda ~3 gün)
   extremeHeatFeels: 38,
   extremeColdFeels: -15,
 

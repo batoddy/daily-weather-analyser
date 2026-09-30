@@ -29,7 +29,7 @@ Aşırı hava olayı varsa en üstte `⚠️ FIRTINA 16:00–18:00` gibi ayrı b
 | Veri | Cloudflare D1 (SQLite) |
 | Zamanlama | Cron her 5 dakikada bir; saati gelen kullanıcıya gönderir (tur başına 10 kişi) |
 | Hava verisi | [Open-Meteo](https://open-meteo.com/) (dün + bugün + yarın, saatlik) |
-| Konum | Telegram konum paylaşımı veya [Nominatim/OSM](https://nominatim.org/) araması |
+| Konum | Ev ve iş semti, [Nominatim/OSM](https://nominatim.org/) ile aranır; çıkışta ev, gün içinde iş, dönüşte ikisinin kötüsü |
 | Yorum | Kural motoru karar verir → Gemini anlatır → doğrulanır; olmazsa şablon |
 
 ```
@@ -42,8 +42,11 @@ Cron */5 ──────────▶ scheduled() → zamanı gelenler → 
   sıcak ama esintili havada "ince uzun kollu" önerir. Eşikler: [thresholds.ts](src/advice/thresholds.ts).
 - **LLM (Gemini)** kararı samimi bir dille anlatır. Çıktıda veride olmayan bir sayı varsa ya da bir
   uyarıya değinilmemişse reddedilir, bir kez tekrar denenir, yine olmazsa şablon metin gider.
-- **Gün içi uyarı:** dönüşten 2 saat önce kalan saatlere bakılır. Yağmur, sert rüzgar ya da aşırı
-  hava olayı (fırtına, dolu, yoğun kar, buzlanma, aşırı sıcak/soğuk) varsa ayrı mesaj gider.
+- **Gün içi uyarı:** dönüşten 2 saat önce kalan saatlere bakılır. Yağmur, çok sert rüzgar (ani hamle
+  ≥ 62 km/s, İstanbul'da yılda ~12 gün) ya da aşırı hava olayı (fırtına, dolu, yoğun kar, buzlanma,
+  aşırı sıcak/soğuk) varsa ayrı mesaj gider. Rüzgar sayıyla değil etkisiyle anlatılır.
+- **Şehir geneli:** evin çevresindeki ~20 km'lik ızgarada en az 2 noktada şiddetli yağmur, sağanak,
+  dolu, yoğun kar ya da buzlanma varsa sabah mesajına ufak bir not düşülür.
 - **Erişim:** yeni kullanıcı `/start` yazınca yöneticiye onay isteği düşer.
 
 ## Kurulum
